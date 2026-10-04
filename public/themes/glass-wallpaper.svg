@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" fill="none">
+  <defs>
+    <linearGradient id="night" x2="1920" y2="1080" gradientUnits="userSpaceOnUse"><stop stop-color="#183549"/><stop offset=".52" stop-color="#152236"/><stop offset="1" stop-color="#282039"/></linearGradient>
+    <linearGradient id="light" x1="180" y1="0" x2="1500" y2="980" gradientUnits="userSpaceOnUse"><stop stop-color="#7bc7d9" stop-opacity=".55"/><stop offset=".48" stop-color="#759ade" stop-opacity=".18"/><stop offset="1" stop-color="#dc9fc4" stop-opacity=".4"/></linearGradient>
+    <linearGradient id="edge" x1="0" y1="300" x2="1920" y2="900" gradientUnits="userSpaceOnUse"><stop stop-color="#c4e9ef" stop-opacity=".35"/><stop offset=".5" stop-color="#91a9de" stop-opacity=".07"/><stop offset="1" stop-color="#e9c3df" stop-opacity=".22"/></linearGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="45"/></filter>
+  </defs>
+  <path fill="url(#night)" d="M0 0h1920v1080H0z"/>
+  <path d="M-200 860C280 830 320 240 900 120S1610 200 2070-160V180C1620 590 1290 290 930 480S650 1090-200 1130Z" fill="url(#light)" filter="url(#soft)"/>
+  <path d="M-180 925C350 890 330 350 940 290S1590 340 2090 30" stroke="url(#edge)" stroke-width="2"/>
+  <path d="M-100 1070C480 1050 520 580 1060 620S1630 960 2050 700" stroke="url(#edge)" stroke-width="3"/>
+</svg>

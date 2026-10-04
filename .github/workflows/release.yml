@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version tag (e.g. v0.1.0)'
+        required: false
+        default: 'v0.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Release Desktop App
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build Tauri app and create release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
+          releaseName: 'Stremio For Gamepad ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}'
+          releaseBody: |
+            ## 🎮 Stremio For Gamepad — Release Oficial
+            
+            ### ✨ Novidades & Recursos
+            - 🪟 **Modo Tela Cheia por Padrão**: Inicia em fullscreen imersivo para TV, Sofá e Steam Deck (com opção de desativar nas Configurações e atalho F11).
+            - 🎮 **Suporte Completo a Controles**: Detecção e seleção manual para **Steam Deck**, **Xbox**, **DualSense (PlayStation)**, **Nintendo Switch** e **Teclado**.
+            - 🫧 **Liquid Glass Studio Shader**: Efeito óptico translúcido com dispersão cromática, reflexos direcionais e refração Snell física.
+            - 🎨 **5 Temas Imersivos**: Liquid Glass, PS1 32-Bit (com iluminação DualSense), OLED Puro, SteamOS e Stremio Original.
+            - ⚙️ **Streaming Engine Integrado**: Servidor local embutido gerenciando conexões P2P e conversão de vídeo na porta 11470.
+            
+            ### 📦 Downloads Disponíveis
+            - **Instalador Oficial (`.exe`)**: Recomendado para instalação rápida com atalhos no Windows.
+            - **Pacote MSI (`.msi`)**: Instalador corporativo Windows Installer.
+          releaseDraft: false
+          prerelease: false

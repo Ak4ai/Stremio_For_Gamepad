@@ -1,0 +1,383 @@
+@import "tailwindcss";
+@import "./styles/liquid-glass.css";
+
+:root {
+  /* Default to Stremio Original Palette */
+  --app-bg: #0e091e;
+  --app-card-bg: rgba(30, 20, 58, 0.75);
+  --app-accent: #7b5bf5;
+  --app-accent-glow: rgba(123, 91, 245, 0.45);
+  --app-accent-secondary: #5a35ea;
+  --app-header-bg: rgba(14, 9, 30, 0.85);
+  --app-border: rgba(255, 255, 255, 0.1);
+  --app-focus-border: #ffffff;
+  --app-text-primary: #f4f5f7;
+  --app-text-muted: #8c92a4;
+
+  /* Button defaults */
+  --ps-circle: #ff334b;
+  --ps-cross: #00c853;
+  --ps-triangle: #1de9b6;
+  --ps-square: #ff4081;
+}
+
+/* Shared header/footer bar — picks up --app-header-bg set per-theme by ThemeService */
+.app-header-bar {
+  background: var(--app-header-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-color: var(--app-border);
+}
+
+/* ----------------------------------------------------
+   PS1 Retro + DualSense Hybrid Aesthetic
+   Industrial 90s ABS Matte Grey with DualSense Neon Cyan
+------------------------------------------------------- */
+[data-theme="ps1"] {
+  --app-bg: #1D1E22;
+  --app-card-bg: rgba(44, 46, 53, 0.90);
+  --app-accent: #0072CE;
+  --app-accent-glow: rgba(255, 255, 255, 0.65);
+  --app-accent-secondary: #FFFFFF;
+  --app-header-bg: rgba(29, 30, 34, 0.96);
+  --app-border: rgba(255, 255, 255, 0.3);
+  --app-focus-border: #FFFFFF;
+  --app-text-primary: #FFFFFF;
+  --app-text-muted: #8C92A4;
+  --app-ps1-light-grey: #D8D9DF;
+  --app-ps1-light-border: rgba(255, 255, 255, 0.3);
+  --app-remove-color: #FF334B;
+  --ps-circle: #FF334B;
+  --ps-cross: #0072CE;
+  --ps-triangle: #1DE9B6;
+  --ps-square: #FF4081;
+}
+
+[data-theme="ps1"] body {
+  background-color: #1D1E22;
+  /* Micro ABS texture effect */
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+/* PS1 Global Component Styling Across All Interfaces */
+[data-theme="ps1"] .app-modal-bg {
+  background-color: #1D1E22 !important;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 0) !important;
+  background-size: 24px 24px !important;
+}
+
+[data-theme="ps1"] .app-header-bar {
+  background-color: rgba(29, 30, 34, 0.96) !important;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+[data-theme="ps1"] .app-card-panel,
+[data-theme="ps1"] .app-card-item {
+  background-color: rgba(44, 46, 53, 0.90) !important;
+  border: 2px solid rgba(255, 255, 255, 0.35) !important;
+}
+
+[data-theme="ps1"] .app-card-panel:hover,
+[data-theme="ps1"] .app-card-item:hover {
+  border-color: #FFFFFF !important;
+}
+
+/* Drawer panels (audio/subtitle flyouts in player) */
+.app-drawer {
+  background: var(--app-header-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-left: 1px solid var(--app-border);
+}
+
+[data-theme="ps1"] .app-drawer {
+  background-color: #1D1E22 !important;
+  border-left: 2px solid rgba(255, 255, 255, 0.35) !important;
+  box-shadow: -8px 0 35px rgba(0, 0, 0, 0.8) !important;
+}
+
+[data-theme="ps1"] .app-input-box {
+  background-color: rgba(44, 46, 53, 0.95) !important;
+  border: 2px solid rgba(255, 255, 255, 0.35) !important;
+}
+
+[data-theme="ps1"] .app-input-box:focus-within {
+  border-color: #FFFFFF !important;
+  box-shadow: 0 0 0 2px #FFFFFF, 0 0 16px rgba(255, 255, 255, 0.4) !important;
+}
+
+[data-theme="ps1"] .app-keyboard-key {
+  background-color: rgba(44, 46, 53, 0.95) !important;
+  border: 2px solid rgba(255, 255, 255, 0.35) !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="ps1"] .app-keyboard-key:hover {
+  border-color: #FFFFFF !important;
+}
+
+/* Stylized Thick White Border Focus Ring & Cards for PS1 Theme */
+[data-theme="ps1"] .xbox-focused,
+[data-theme="ps1"] .app-card-item.is-focused,
+[data-theme="ps1"] .app-keyboard-key.is-focused {
+  background-color: rgba(60, 63, 72, 0.95) !important;
+  border: 3.5px solid #FFFFFF !important;
+  box-shadow: 0 0 0 3.5px #FFFFFF, 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 24px rgba(255, 255, 255, 0.7) !important;
+  z-index: 30;
+}
+
+/* Replace thin glass borders with stylized crisp white borders on cards */
+[data-theme="ps1"] .aspect-\[2\/3\]:not(.xbox-focused) {
+  border: 2px solid rgba(255, 255, 255, 0.35) !important;
+}
+
+[data-theme="ps1"] .aspect-\[2\/3\]:not(.xbox-focused):hover {
+  border: 2px solid #FFFFFF !important;
+}
+
+/* ----------------------------------------------------
+   Theme-Specific Virtual Keyboard Rules
+------------------------------------------------------- */
+/* Base / Stremio Clássico Keyboard */
+.app-keyboard-key {
+  background-color: var(--app-card-bg);
+  border: 1.5px solid var(--app-border);
+  color: var(--app-text-primary);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
+}
+
+.app-keyboard-key.is-focused {
+  background-color: var(--app-card-bg);
+  border-color: var(--app-focus-border, #ffffff) !important;
+  box-shadow: 0 0 0 3px var(--app-focus-border, #ffffff), 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 22px var(--app-accent-glow) !important;
+  color: #ffffff !important;
+  z-index: 25;
+}
+
+[data-theme="stremio"] .app-keyboard-key {
+  background-color: rgba(38, 26, 70, 0.85);
+  border: 1.5px solid rgba(123, 91, 245, 0.35);
+  color: #f4f5f7;
+}
+
+[data-theme="stremio"] .app-keyboard-key.is-focused {
+  background-color: rgba(60, 40, 110, 0.95) !important;
+  border-color: #7b5bf5 !important;
+  box-shadow: 0 0 0 3.5px #7b5bf5, 0 8px 26px rgba(0, 0, 0, 0.8), 0 0 26px rgba(123, 91, 245, 0.7) !important;
+}
+
+/* PlayStation 5 DualSense Theme */
+[data-theme="playstation"] .app-keyboard-key {
+  background-color: rgba(18, 28, 52, 0.85);
+  border: 1.5px solid rgba(0, 111, 205, 0.35);
+  color: #ffffff;
+}
+
+[data-theme="playstation"] .app-keyboard-key.is-focused {
+  background-color: rgba(24, 42, 80, 0.95) !important;
+  border-color: #006FCD !important;
+  box-shadow: 0 0 0 3.5px #006FCD, 0 8px 26px rgba(0, 0, 0, 0.85), 0 0 28px rgba(0, 111, 205, 0.7) !important;
+}
+
+/* Xbox Carbon Green Theme */
+[data-theme="xbox"] .app-keyboard-key {
+  background-color: rgba(26, 29, 36, 0.9);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+[data-theme="xbox"] .app-keyboard-key.is-focused {
+  background-color: rgba(36, 44, 52, 0.95) !important;
+  border-color: #107C10 !important;
+  box-shadow: 0 0 0 3.5px #107C10, 0 8px 26px rgba(0, 0, 0, 0.9), 0 0 28px rgba(16, 124, 16, 0.7) !important;
+}
+
+/* OLED Midnight Monochrome Theme */
+[data-theme="oled"] .app-keyboard-key {
+  background-color: #141414;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+[data-theme="oled"] .app-keyboard-key.is-focused {
+  background-color: #242424 !important;
+  border-color: #FFFFFF !important;
+  box-shadow: 0 0 0 3.5px #FFFFFF, 0 8px 28px rgba(0, 0, 0, 0.95), 0 0 22px rgba(255, 255, 255, 0.5) !important;
+}
+
+/* ----------------------------------------------------
+   Nintendo Switch Theme
+------------------------------------------------------- */
+[data-theme="nintendo"] {
+  --app-bg: #111215;
+  --app-card-bg: rgba(30, 32, 38, 0.85);
+  --app-accent: #E60012;
+  --app-accent-glow: rgba(230, 0, 18, 0.45);
+  --app-accent-secondary: #00C3E3;
+  --app-header-bg: rgba(17, 18, 21, 0.92);
+  --app-border: #383b42;
+  --app-focus-border: #E60012;
+}
+
+[data-theme="nintendo"] .app-keyboard-key {
+  background-color: rgba(30, 32, 38, 0.9);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+[data-theme="nintendo"] .xbox-focused,
+[data-theme="nintendo"] .app-card-item.is-focused,
+[data-theme="nintendo"] .app-keyboard-key.is-focused {
+  background-color: rgba(45, 48, 58, 0.95) !important;
+  border-color: #E60012 !important;
+  box-shadow: 0 0 0 3.5px #E60012, 0 12px 28px rgba(0, 0, 0, 0.9), 0 0 28px rgba(230, 0, 18, 0.6) !important;
+}
+
+[data-theme="nintendo"] .app-card-panel,
+[data-theme="nintendo"] .app-card-item {
+  background-color: rgba(30, 32, 38, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="nintendo"] .app-drawer {
+  background-color: #111215 !important;
+  border-left: 2px solid rgba(230, 0, 18, 0.5) !important;
+}
+
+/* SteamOS: crisp surfaces and a clear controller focus. */
+[data-theme="steamos"] .app-dashboard,
+[data-theme="steamos"] .app-modal-bg {
+  background-image: radial-gradient(ellipse at 80% 0%, rgba(26, 159, 255, 0.12), transparent 65%);
+}
+
+[data-theme="steamos"] .app-card-panel,
+[data-theme="steamos"] .app-card-item,
+[data-theme="steamos"] .app-input-box,
+[data-theme="steamos"] .app-keyboard-key {
+  background-color: var(--app-card-bg);
+  border: 1px solid var(--app-border);
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.24);
+}
+
+[data-theme="steamos"] .xbox-focused,
+[data-theme="steamos"] .app-card-item.is-focused,
+[data-theme="steamos"] .app-keyboard-key.is-focused {
+  border-color: #66c0f4 !important;
+  box-shadow: 0 0 0 3px #1a9fff, 0 8px 26px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* ----------------------------------------------------
+   General Global Layout & Typography
+------------------------------------------------------- */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--app-bg);
+  color: var(--app-text-primary, #f3f4f6);
+  font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease;
+}
+
+/* Hide standard scrollbars for console experience */
+::-webkit-scrollbar {
+  display: none;
+}
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* Console 10-foot scale and glow animations */
+.xbox-focus-ring {
+  transition: transform 0.18s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.18s cubic-bezier(0.2, 0, 0, 1), border-color 0.18s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.xbox-focused {
+  transform: scale(1.06);
+  border-color: var(--app-focus-border, #ffffff) !important;
+  box-shadow: 0 0 0 3px var(--app-focus-border, #ffffff), 0 12px 28px rgba(0, 0, 0, 0.85), 0 0 26px var(--app-accent-glow) !important;
+  z-index: 30;
+}
+
+/* Glassmorphism / Acrylic for overlays */
+.keyboard-gliding-selector {
+  position: absolute;
+  pointer-events: none;
+  visibility: hidden;
+  z-index: 35;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  filter: drop-shadow(0 3px 8px var(--app-accent-glow));
+  transform-origin: center;
+}
+
+.keyboard-gliding-selector svg { overflow: visible; display: block; position: relative; }
+
+.keyboard-glass-lens {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(0.8px) saturate(1.15);
+  -webkit-backdrop-filter: blur(0.8px) saturate(1.15);
+}
+
+@supports (backdrop-filter: url("#keyboard-glass-refraction")) {
+  .keyboard-glass-lens { backdrop-filter: url("#keyboard-glass-refraction") saturate(1.15); }
+}
+
+.keyboard-with-selector .app-keyboard-key.is-focused {
+  transform: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+.xbox-acrylic {
+  background: var(--app-header-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* 10-Foot Console Subtitle Styling */
+video::cue {
+  background-color: rgba(0, 0, 0, 0.85);
+  color: #ffffff;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 1.45rem;
+  font-weight: 700;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.95), 0 0 4px #000000;
+  line-height: 1.4;
+  padding: 0.25em 0.6em;
+  border-radius: 6px;
+}
+
+/* Pause navigation highlights the icon contour without a surrounding panel. */
+.player-pause-control {
+  color: rgba(255, 255, 255, 0.65);
+  background: transparent;
+  border: 0;
+  outline: none;
+  transition: color 180ms ease, transform 180ms ease;
+}
+.player-pause-control > svg {
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.9));
+  transition: stroke 180ms ease, filter 180ms ease;
+}
+.player-pause-control:not(:disabled):is(:hover, :focus-visible, [aria-current="true"]) {
+  color: var(--app-accent);
+  transform: scale(1.08);
+}
+.player-pause-control:not(:disabled):is(:hover, :focus-visible, [aria-current="true"]) > svg {
+  stroke: rgba(255, 255, 255, 0.9);
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 12px var(--app-accent-glow)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.9));
+}
+@media (prefers-reduced-motion: reduce) {
+  .player-pause-control, .player-pause-control > svg { transition: none; }
+}

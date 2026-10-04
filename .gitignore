@@ -1,0 +1,46 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies and build outputs
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Tauri build artifacts
+src-tauri/target/
+src-tauri/gen/
+
+# Local binaries and release packages
+release/
+*.exe
+*.msi
+*.dll
+
+# Large binaries exceeding GitHub 100MB limit
+bin/server/ffmpeg.exe
+bin/server/ffprobe.exe
+bin/server/stremio-runtime.exe
+bin/server/stremio-service.exe
+
+# Temporary scratch and workspace logs
+scratch/
+.gemini/
+.system_generated/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
