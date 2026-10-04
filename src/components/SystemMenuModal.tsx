@@ -5,8 +5,8 @@ import { GamepadManager } from '../services/gamepad';
 import { SoundService } from '../services/sound';
 import { ControllerButtonBadge } from './ControllerButtonBadge';
 import { LiquidGlassLayer } from './LiquidGlassLayer';
-import { minimizeApp, closeApp, openUrl, GITHUB_REPO_URL } from '../services/system';
-import { Minus, ExternalLink, Power, X, Terminal } from 'lucide-react';
+import { minimizeApp, closeApp, openUrl, activateSteamOverlay, GITHUB_REPO_URL } from '../services/system';
+import { Minus, ExternalLink, Power, X, Terminal, Layers } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -16,7 +16,7 @@ interface Props {
 }
 
 interface MenuItem {
-  id: 'minimize' | 'github' | 'exit' | 'cancel';
+  id: 'minimize' | 'github' | 'steam' | 'exit' | 'cancel';
   title: string;
   desc: string;
   icon: React.ReactNode;
@@ -33,6 +33,17 @@ export const SystemMenuModal: React.FC<Props> = ({
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
   const menuItems: MenuItem[] = [
+    {
+      id: 'steam',
+      title: 'Painel da Steam (Shift+Tab)',
+      desc: 'Abre a interface sobreposta da Steam para amigos, chat e configurações',
+      icon: <Layers className="w-5 h-5 text-indigo-400" />,
+      action: async () => {
+        SoundService.playActionConfirm();
+        await activateSteamOverlay();
+        onClose();
+      },
+    },
     {
       id: 'minimize',
       title: 'Minimizar Aplicativo',

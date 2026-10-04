@@ -18,6 +18,7 @@ import { SettingsView } from './components/SettingsView';
 import { SystemMenuModal } from './components/SystemMenuModal';
 import { AccountService } from './services/account';
 import { SettingsService, applyFullscreen } from './services/settings';
+import { activateSteamOverlay } from './services/system';
 import { SoundService } from './services/sound';
 import { subscribeDualSenseTouchpad } from './services/dualsenseTouchpad';
 import type { StremioAddon } from './types/account';
@@ -156,6 +157,10 @@ export default function App() {
           next ? 'Modo Tela Cheia Ativado' : 'Modo Janela Ativado',
           next ? 'add' : 'remove'
         );
+      }
+      if (e.shiftKey && e.key === 'Tab') {
+        e.preventDefault();
+        activateSteamOverlay();
       }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);

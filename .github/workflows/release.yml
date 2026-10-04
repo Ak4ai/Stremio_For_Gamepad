@@ -59,6 +59,7 @@ jobs:
             - 🪟 **Modo Tela Cheia por Padrão**: Inicia em fullscreen imersivo para TV, Sofá e Steam Deck (com opção de desativar nas Configurações e atalho F11).
             - 🎮 **Suporte Completo a Controles**: Detecção e seleção manual para **Steam Deck**, **Xbox**, **DualSense (PlayStation)**, **Nintendo Switch** e **Teclado**.
             - 🕹️ **Menu de Sistema Rápido**: Abra a qualquer momento pressionando **Start / Menu** para Minimizar, Acessar o GitHub ou Sair do aplicativo.
+            - 💨 **Painel da Steam (Shift+Tab)**: Suporte completo ao Steam Overlay com swapchain D3D11 wgpu e IPC Steamworks ativo.
             - 🫧 **Liquid Glass Studio Shader**: Efeito óptico translúcido com dispersão cromática, reflexos direcionais e refração Snell física.
             - 🎨 **5 Temas Imersivos**: Liquid Glass, PS1 32-Bit (com iluminação DualSense), OLED Puro, SteamOS e Stremio Original.
             - ⚙️ **Streaming Engine Integrado**: Servidor local embutido gerenciando conexões P2P e conversão de vídeo na porta 11470.

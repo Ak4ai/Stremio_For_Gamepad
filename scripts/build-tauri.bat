@@ -42,6 +42,10 @@ if not exist "release" mkdir release
 if not exist "release\bin" mkdir release\bin
 copy /Y "src-tauri\target\x86_64-pc-windows-gnu\release\app.exe" "release\Stremio_For_Gamepad.exe" >nul
 copy /Y "src-tauri\target\x86_64-pc-windows-gnu\release\WebView2Loader.dll" "release\WebView2Loader.dll" >nul
+for /r "src-tauri\target\x86_64-pc-windows-gnu" %%f in (steam_api64.dll) do (
+    copy /Y "%%f" "release\steam_api64.dll" >nul 2>&1
+    copy /Y "%%f" "src-tauri\target\x86_64-pc-windows-gnu\release\steam_api64.dll" >nul 2>&1
+)
 if exist "src-tauri\target\x86_64-pc-windows-gnu\release\bundle\nsis\*.exe" (
     copy /Y "src-tauri\target\x86_64-pc-windows-gnu\release\bundle\nsis\*.exe" "release\" >nul
 )

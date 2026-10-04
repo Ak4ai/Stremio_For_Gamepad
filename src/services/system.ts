@@ -52,3 +52,27 @@ export async function openUrl(url: string): Promise<void> {
   }
   window.open(url, '_blank', 'noopener,noreferrer');
 }
+
+export async function activateSteamOverlay(): Promise<boolean> {
+  try {
+    const invoke = getTauriInvoker();
+    if (invoke) {
+      return (await invoke('activate_steam_overlay')) as boolean;
+    }
+  } catch (err) {
+    console.warn('Erro ao acionar overlay da Steam via Tauri:', err);
+  }
+  return false;
+}
+
+export async function isSteamRunning(): Promise<boolean> {
+  try {
+    const invoke = getTauriInvoker();
+    if (invoke) {
+      return (await invoke('is_steam_running')) as boolean;
+    }
+  } catch (err) {
+    console.warn('Erro ao checar status da Steam:', err);
+  }
+  return false;
+}
