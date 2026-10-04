@@ -1,175 +1,143 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
   <defs>
-    <!-- Stremio Vivid Electric Violet Gradient (Upright 'S') -->
-    <linearGradient id="sFaceGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#ca8aff"/>
-      <stop offset="30%" stop-color="#a855f7"/>
-      <stop offset="70%" stop-color="#7c24e0"/>
-      <stop offset="100%" stop-color="#550fb8"/>
+    <style>
+      polygon, polyline {
+        shape-rendering: geometricPrecision;
+      }
+    </style>
+
+    <!-- Top Tier Gradients -->
+    <linearGradient id="gTopFace" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f8f7fd"/>
     </linearGradient>
 
-    <!-- 3D Extrusion Depth of 'S' (PlayStation Side Facets) -->
-    <linearGradient id="sDepthGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#4a1290"/>
-      <stop offset="100%" stop-color="#24054a"/>
+    <linearGradient id="gT1_R" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#ece6f9"/>
+    </linearGradient>
+    <linearGradient id="gT1_L" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#d1d2d6"/>
+      <stop offset="100%" stop-color="#c6bbd9"/>
     </linearGradient>
 
-    <!-- PS Multi-Color Bands for Floor Diamond Rim -->
-    <!-- Top-Right: Cyan -->
-    <linearGradient id="bandCyan" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#00f2fe"/>
-      <stop offset="100%" stop-color="#38bdf8"/>
+    <linearGradient id="gT2_R" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ebe0fe"/>
+      <stop offset="100%" stop-color="#d8c9f5"/>
     </linearGradient>
-    <!-- Right-Bottom: Purple -->
-    <linearGradient id="bandPurple" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#a855f7"/>
-      <stop offset="100%" stop-color="#7c3aed"/>
-    </linearGradient>
-    <!-- Left-Bottom: Magenta -->
-    <linearGradient id="bandMagenta" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f43f5e"/>
-      <stop offset="100%" stop-color="#fb7185"/>
+    <linearGradient id="gT2_L" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#c6bbd9"/>
+      <stop offset="100%" stop-color="#baadd2"/>
     </linearGradient>
 
-    <!-- Ambient Canvas Glow -->
-    <radialGradient id="ambientGlow" cx="50%" cy="55%" r="52%">
-      <stop offset="0%" stop-color="#380e66" stop-opacity="0.5"/>
-      <stop offset="60%" stop-color="#140726" stop-opacity="0.25"/>
-      <stop offset="100%" stop-color="#090310" stop-opacity="0"/>
-    </radialGradient>
+    <!-- Middle Tier Gradients -->
+    <linearGradient id="gMidFace" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#ebe0fe"/>
+      <stop offset="100%" stop-color="#d2b0fa"/>
+    </linearGradient>
 
-    <!-- Drop Shadows for 3D Floating Presence -->
-    <filter id="psEmblemShadow" x="-25%" y="-25%" width="150%" height="150%">
-      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#000000" flood-opacity="0.85"/>
-      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#7c3aed" flood-opacity="0.35"/>
-    </filter>
+    <linearGradient id="gM3_F" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#c49eed"/>
+      <stop offset="100%" stop-color="#b383f6"/>
+    </linearGradient>
+    <linearGradient id="gM3_R" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#af74f5"/>
+      <stop offset="100%" stop-color="#9e5fe8"/>
+    </linearGradient>
 
-    <filter id="playGlow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#ffffff" flood-opacity="0.7"/>
-    </filter>
+    <linearGradient id="gM4_F" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#995be2"/>
+      <stop offset="100%" stop-color="#8641d6"/>
+    </linearGradient>
+    <linearGradient id="gM4_R" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8237d4"/>
+      <stop offset="100%" stop-color="#6f22c4"/>
+    </linearGradient>
+
+    <!-- Bottom Tier Gradients -->
+    <linearGradient id="gBotFace" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#7a18cf"/>
+      <stop offset="100%" stop-color="#6c12ba"/>
+    </linearGradient>
+
+    <linearGradient id="gB5_R" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7a18cf"/>
+      <stop offset="100%" stop-color="#5c0e9f"/>
+    </linearGradient>
+    <linearGradient id="gB5_L" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#380b68"/>
+      <stop offset="100%" stop-color="#2a0650"/>
+    </linearGradient>
+
+    <linearGradient id="gB6_R" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4c098c"/>
+      <stop offset="100%" stop-color="#320462"/>
+    </linearGradient>
+    <linearGradient id="gB6_L" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#220440"/>
+      <stop offset="100%" stop-color="#140128"/>
+    </linearGradient>
   </defs>
 
-  <!-- ============================================== -->
-  <!-- APP ICON CANVAS                                -->
-  <!-- ============================================== -->
-  <rect width="512" height="512" rx="116" fill="#090310"/>
-  <rect width="512" height="512" rx="116" fill="url(#ambientGlow)"/>
-  <rect width="510" height="510" x="1" y="1" rx="115" fill="none" stroke="#25123d" stroke-width="2"/>
+  <g id="stremio-isometric-s">
+    <!-- ========================================================= -->
+    <!-- 1. BOTTOM TIER (L-SHAPED BASE BLOCK)                     -->
+    <!-- ========================================================= -->
+    <!-- Band 6 (Lowest base, height = 109 to bottom apex 1626) -->
+    <!-- Left wall (facing down-left) -->
+    <polygon points="93.59,355.80 256.00,437.01 256.00,476.00 93.59,394.80" fill="url(#gB6_L)"/>
+    <!-- Right wall (facing down-right) -->
+    <polygon points="256.00,437.01 418.41,355.80 418.41,394.80 256.00,476.00" fill="url(#gB6_R)"/>
+    <!-- Left arm end wall (facing down-left) -->
+    <polygon points="166.57,319.32 93.59,355.80 93.59,394.80 166.57,358.31" fill="url(#gB6_L)"/>
 
-  <!-- ============================================== -->
-  <!-- PLAYSTATION PERSPECTIVE ARCHITECTURE           -->
-  <!-- ============================================== -->
-  <g filter="url(#psEmblemShadow)">
+    <!-- Band 5 (Upper base band, height = 89) -->
+    <!-- Left wall (facing down-left) -->
+    <polygon points="93.59,323.97 256.00,405.17 256.00,437.01 93.59,355.80" fill="url(#gB5_L)"/>
+    <!-- Right wall (facing down-right) -->
+    <polygon points="256.00,405.17 418.41,323.97 418.41,355.80 256.00,437.01" fill="url(#gB5_R)"/>
+    <!-- Left arm end wall (facing down-left) -->
+    <polygon points="166.57,287.48 93.59,323.97 93.59,355.80 166.57,319.32" fill="url(#gB5_L)"/>
 
-    <!-- ============================================ -->
-    <!-- 1. FLOOR PLANE: STREMIO DIAMOND + PLAY SHADOW -->
-    <!-- Explicit isometric floor geometry            -->
-    <!-- Center: (268, 362)                           -->
-    <!-- ============================================ -->
+    <!-- Bottom Tier Top Face (Pure parallel L-Shape) -->
+    <polygon points="256.00,405.17 93.59,323.97 166.57,287.48 256.00,332.20 345.43,287.48 418.41,323.97" fill="url(#gBotFace)"/>
 
-    <!-- Outer Diamond Band 1: Back-Left to Back-Right (Cyan) -->
-    <!-- From Left (112, 362) to Top (268, 308) to Right (424, 362) -->
-    <path d="M 112 362
-             C 112 356, 120 350, 130 346
-             L 254 304
-             C 262 301, 274 301, 282 304
-             L 406 346
-             C 416 350, 424 356, 424 362
-             L 388 362
-             L 274 324
-             C 270 322, 266 322, 262 324
-             L 148 362 Z"
-          fill="url(#bandCyan)"/>
+    <!-- ========================================================= -->
+    <!-- 2. MIDDLE TIER (CLEAN CONTINUOUS RECTANGULAR BAR)        -->
+    <!-- ========================================================= -->
+    <!-- Middle Arm Band 4 (Lower band, height = 89) -->
+    <polygon points="93.59,210.57 345.43,336.49 345.43,368.33 93.59,242.41" fill="url(#gM4_F)"/>
+    <polygon points="345.43,336.49 418.41,300.00 418.41,331.84 345.43,368.33" fill="url(#gM4_R)"/>
 
-    <!-- Outer Diamond Band 2: Back-Right to Front-Bottom (Purple / Magenta) -->
-    <!-- From Right (424, 362) to Bottom (268, 416) -->
-    <path d="M 424 362
-             C 424 368, 416 374, 406 378
-             L 282 420
-             C 274 423, 262 423, 254 420
-             L 264 398
-             C 266 399, 270 399, 272 398
-             L 388 362 Z"
-          fill="url(#bandPurple)"/>
+    <!-- Middle Arm Band 3 (Upper band, height = 86) -->
+    <polygon points="93.59,179.80 345.43,305.72 345.43,336.49 93.59,210.57" fill="url(#gM3_F)"/>
+    <polygon points="345.43,305.72 418.41,269.24 418.41,300.00 345.43,336.49" fill="url(#gM3_R)"/>
 
-    <!-- Outer Diamond Band 3: Front-Bottom to Left (Magenta) -->
-    <!-- From Bottom (268, 416) to Left (112, 362) -->
-    <path d="M 254 420
-             L 130 378
-             C 120 374, 112 368, 112 362
-             L 148 362
-             L 264 398 Z"
-          fill="url(#bandMagenta)"/>
+    <!-- Middle Arm Top Face -->
+    <polygon points="93.59,179.80 345.43,305.72 418.41,269.24 166.57,143.32" fill="url(#gMidFace)"/>
 
-    <!-- Floor Diamond Recessed Dark Well (Interior) -->
-    <polygon points="144,362 268,322 392,362 268,402" fill="#0d0517"/>
+    <!-- Hair-line junction where middle arm meets bottom L top face -->
+    <polygon points="345.43,368.33 418.41,331.84 418.41,332.55 345.43,369.04" fill="#5c0e9f"/>
 
-    <!-- ============================================ -->
-    <!-- THE PLAY TRIANGLE ON THE FLOOR (IN PERSPECTIVE) -->
-    <!-- Pointing right in 3D floor projection        -->
-    <!-- Perfectly clear, unobstructed, high contrast -->
-    <!-- ============================================ -->
-    <g filter="url(#playGlow)">
-      <!-- Points: Base-Top (236, 348), Base-Bottom (254, 380), Tip (326, 364) -->
-      <path d="M 238 347
-               C 235 342, 241 338, 247 340
-               L 322 360
-               C 330 362, 330 368, 322 370
-               L 259 385
-               C 253 386, 247 382, 246 377 Z"
-            fill="#ffffff"/>
-    </g>
+    <!-- ========================================================= -->
+    <!-- 3. TOP TIER (L-SHAPED UPPER BLOCK)                       -->
+    <!-- ========================================================= -->
+    <!-- Top Tier Band 2 (Lower band, height = 89) -->
+    <polygon points="418.41,147.97 345.43,184.46 345.43,216.29 418.41,179.80" fill="url(#gT2_R)"/>
+    <polygon points="345.43,184.46 256.00,139.74 256.00,171.58 345.43,216.29" fill="url(#gT2_L)"/>
+    <polygon points="256.00,139.74 166.57,184.46 166.57,216.29 256.00,171.58" fill="url(#gT2_L)"/>
+    <polygon points="166.57,184.46 93.59,147.97 93.59,179.80 166.57,216.29" fill="url(#gT2_R)"/>
 
-    <!-- ============================================ -->
-    <!-- 2. UPRIGHT STANDING 'S' (STREMIO HERO LETTER) -->
-    <!-- Exact PlayStation architectural silhouette   -->
-    <!-- ============================================ -->
+    <!-- Top Tier Band 1 (Upper band, height = 86) -->
+    <polygon points="418.41,117.20 345.43,153.69 345.43,184.46 418.41,147.97" fill="url(#gT1_R)"/>
+    <polygon points="345.43,153.69 256.00,108.98 256.00,139.74 345.43,184.46" fill="url(#gT1_L)"/>
+    <polygon points="256.00,108.98 166.57,153.69 166.57,184.46 256.00,139.74" fill="url(#gT1_L)"/>
+    <polygon points="166.57,153.69 93.59,117.20 93.59,147.97 166.57,184.46" fill="url(#gT1_R)"/>
 
-    <!-- 3D Extrusion Depth on Left/Spine (PS 'P' 3D bevel) -->
-    <!-- Top-left loop depth -->
-    <path d="M 174 154
-             C 174 132, 186 114, 206 102
-             L 190 90
-             C 166 104, 152 128, 152 156
-             L 152 216
-             L 174 200 Z"
-          fill="url(#sDepthGrad)"/>
+    <!-- Top Tier Top Face (Pure White) -->
+    <polygon points="256.00,36.00 418.41,117.20 345.43,153.69 256.00,108.98 166.57,153.69 93.59,117.20" fill="url(#gTopFace)"/>
 
-    <!-- Bottom-left loop depth -->
-    <path d="M 172 358
-             L 150 372
-             L 150 398
-             C 168 418, 198 430, 234 430
-             L 240 412
-             C 212 412, 186 400, 172 384 Z"
-          fill="url(#sDepthGrad)"/>
-
-    <!-- Upright Master 'S' Body -->
-    <path d="M 284 74
-             C 206 74, 168 118, 168 166
-             C 168 222, 228 240, 260 252
-             C 298 268, 318 288, 318 322
-             C 318 364, 278 396, 212 396
-             C 164 396, 128 370, 114 344
-             L 114 388
-             C 138 414, 180 430, 226 430
-             C 312 430, 362 380, 362 320
-             C 362 258, 298 238, 264 224
-             C 224 208, 210 190, 210 160
-             C 210 124, 240 100, 286 100
-             C 324 100, 352 120, 364 142
-             L 364 98
-             C 344 82, 316 74, 284 74 Z"
-          fill="url(#sFaceGrad)"/>
-
-    <!-- High-Gloss White Accent Along Upper Spine -->
-    <path d="M 284 100
-             C 240 100, 210 124, 210 160
-             C 210 184, 222 202, 254 218"
-          fill="none"
-          stroke="#ffffff"
-          stroke-width="3.5"
-          stroke-linecap="round"
-          opacity="0.7"/>
+    <!-- Subtle edge highlight along the top outer crest -->
+    <polyline points="93.59,117.20 256.00,36.00 418.41,117.20" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round"/>
   </g>
 </svg>
