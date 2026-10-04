@@ -1,7 +1,7 @@
-# 🎮 Stremio For Gamepad
+# 🎮 Steam for Consoles
 
 <p align="center">
-  <img src="src/assets/hero.png" alt="Stremio For Gamepad" width="720" style="border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
+  <img src="src/assets/hero.png" alt="Steam for Consoles" width="720" style="border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
 </p>
 
 <p align="center">
@@ -59,11 +59,11 @@
 
 ### 1. Versão Portátil (Sem Instalação)
 Baixe o executável na aba de [Releases](../../releases) ou copie da pasta `release/`:
-1. Execute `Stremio_For_Gamepad.exe`.
+1. Execute `Steam_for_Consoles.exe`.
 2. O aplicativo abre em tela cheia e sobe o servidor de streaming automaticamente.
 
 ### 2. Instalador Oficial do Windows (NSIS / MSI)
-1. Execute `Stremio For Gamepad_0.1.0_x64-setup.exe`.
+1. Execute `Steam for Consoles_0.1.0_x64-setup.exe`.
 2. O assistente criará atalhos na Área de Trabalho e no Menu Iniciar.
 
 ---
@@ -107,3 +107,19 @@ O repositório inclui automação completa via [GitHub Actions](.github/workflow
 
 ## 📄 Licença
 Distribuído sob a licença MIT. Consulte `LICENSE` para mais informações.
+
+## Steam Overlay (Windows)
+
+Adicione `release/Steam_for_Consoles.exe` como jogo não Steam e inicie pela Biblioteca. Nas propriedades do atalho, habilite o overlay da Steam e confira o destino e o nome **Steam for Consoles**. O navegador e o modo de desenvolvimento não oferecem esta integração.
+
+A versão atual preserva a identidade do atalho e não inicializa o SDK de teste nem usa o AppID 480 (Spacewar). Executáveis e instaladores antigos continuam com o comportamento da versão em que foram compilados; recompilar com `scripts\build-tauri.bat` atualiza a versão portátil em `release/`.
+
+O WebView2 renderiza em outro processo. Para o overlay, uma superfície Direct3D 12 no processo principal é criada apenas em lançamentos pela Steam. Ela prepara a conexão com 20 quadros ocultos e depois pausa a apresentação até Shift+Tab. Uma captura do aplicativo serve como fundo do overlay, permanecendo congelada enquanto ele está aberto. A reprodução continua na janela principal. Ao fechar o overlay ou falhar a ativação, a superfície é ocultada.
+
+Shift+Tab é encaminhado ao processo nativo antes da navegação da busca. Pedidos simultâneos são agrupados para evitar abrir/fechar duas vezes. O retorno do foco bloqueia a repetição imediata do atalho.
+
+Os logs nativos ficam em `%LOCALAPPDATA%/com.stremio.gamepad/logs/`. A linha de inicialização informa se o renderer foi injetado e os IDs recebidos da Steam. O identificador de armazenamento foi preservado para manter as configurações anteriores.
+
+`npm run tauri:build` também sincroniza o executável portátil de `release/`. Feche o aplicativo antes de compilar; se a cópia falhar, o build avisa em vez de informar sucesso com o executável antigo. Ao sair, somente o motor iniciado pelo próprio aplicativo é encerrado, permitindo que a Steam libere o atalho para outra execução.
+
+Teste de teclado: `npm run test:steam`. Testes de transição: `cargo test --manifest-path src-tauri/Cargo.toml --lib`. A validação visual do overlay exige iniciar o executável pela Steam.

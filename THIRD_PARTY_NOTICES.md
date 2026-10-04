@@ -27,3 +27,7 @@ SOFTWARE.
 # Xelu / Haaldor controller prompts
 
 Steam Deck prompt vectors are exported from [haaldor/Xelu_prompts_SVG](https://github.com/haaldor/Xelu_prompts_SVG), based on Nicolae (Xelu) Berbece's prompt pack (CC0-1.0). Their editable font labels use Arial/system sans-serif rather than requiring COCOGOOSE. The isolated vector sources are in scripts/assets/xelu-steam-deck.json; regenerate with npm run generate:steam-deck.
+
+# Steam overlay surface
+
+The Windows overlay surface adapts [PSG-Team/tauri-steam-overlay-surface](https://github.com/PSG-Team/tauri-steam-overlay-surface) 0.1.3 (MIT), copyright 2026 The Private Sector Group, LLC (PSG Studios). Source, original license, and local changes are preserved in `src-tauri/vendor/steam-overlay-surface/`.

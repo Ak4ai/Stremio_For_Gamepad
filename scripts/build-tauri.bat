@@ -1,7 +1,7 @@
 @echo off
 setlocal
 echo ===================================================
-echo   Stremio For Gamepad - Compilador Tauri (.exe)
+echo   Steam for Consoles - Compilador Tauri (.exe)
 echo ===================================================
 echo.
 
@@ -21,15 +21,8 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo 2. Compilando frontend (Vite)...
-call npm run build
-if %errorlevel% neq 0 (
-    echo [ERRO] Falha ao compilar os arquivos do frontend.
-    pause
-    exit /b 1
-)
-
-echo 3. Compilando binario nativo Tauri (.exe)...
+echo 2. Compilando frontend e binario nativo Tauri (.exe)...
+rem Tauri runs beforeBuildCommand itself; do not compile the frontend twice.
 call npx @tauri-apps/cli build --target x86_64-pc-windows-gnu
 if %errorlevel% neq 0 (
     echo [ERRO] Falha na compilacao Tauri.
@@ -37,24 +30,29 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo 4. Sincronizando pasta release...
+echo 3. Sincronizando pasta release...
 if not exist "release" mkdir release
 if not exist "release\bin" mkdir release\bin
-copy /Y "src-tauri\target\x86_64-pc-windows-gnu\release\app.exe" "release\Stremio_For_Gamepad.exe" >nul
-copy /Y "src-tauri\target\x86_64-pc-windows-gnu\release\WebView2Loader.dll" "release\WebView2Loader.dll" >nul
-for /r "src-tauri\target\x86_64-pc-windows-gnu" %%f in (steam_api64.dll) do (
-    copy /Y "%%f" "release\steam_api64.dll" >nul 2>&1
-    copy /Y "%%f" "src-tauri\target\x86_64-pc-windows-gnu\release\steam_api64.dll" >nul 2>&1
+copy /Y "src-tauri\target\x86_64-pc-windows-gnu\release\app.exe" "release\Steam_for_Consoles.exe" >nul
+if %errorlevel% neq 0 (
+    echo [ERRO] Nao foi possivel atualizar release\Steam_for_Consoles.exe. Feche o aplicativo antes de compilar.
+    exit /b 1
 )
+copy /Y "src-tauri\target\x86_64-pc-windows-gnu\release\WebView2Loader.dll" "release\WebView2Loader.dll" >nul
+rem No Steamworks test SDK or AppID file is required for non-Steam shortcuts.
+rem Do not copy stale steam_api64.dll files from previous builds.
 if exist "src-tauri\target\x86_64-pc-windows-gnu\release\bundle\nsis\*.exe" (
     copy /Y "src-tauri\target\x86_64-pc-windows-gnu\release\bundle\nsis\*.exe" "release\" >nul
+)
+if exist "src-tauri\target\x86_64-pc-windows-gnu\release\bundle\msi\*.msi" (
+    copy /Y "src-tauri\target\x86_64-pc-windows-gnu\release\bundle\msi\*.msi" "release\" >nul
 )
 xcopy /E /I /Y "bin\server" "release\bin\server" >nul
 
 echo.
 echo ===================================================
 echo [SUCESSO] Build completo!
-echo Executavel pronto em: release\Stremio_For_Gamepad.exe
+echo Executavel pronto em: release\Steam_for_Consoles.exe
 echo Instaladores prontos em: release\
 echo ===================================================
 echo.

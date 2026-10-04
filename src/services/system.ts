@@ -53,16 +53,38 @@ export async function openUrl(url: string): Promise<void> {
   window.open(url, '_blank', 'noopener,noreferrer');
 }
 
-export async function activateSteamOverlay(): Promise<boolean> {
+let overlayRequest: Promise<boolean> | null = null;
+
+export function activateSteamOverlay(): Promise<boolean> {
+  if (overlayRequest) return overlayRequest;
+  overlayRequest = requestSteamOverlay().finally(() => { overlayRequest = null; });
+  return overlayRequest;
+}
+
+async function requestSteamOverlay(): Promise<boolean> {
+  let activated = false;
   try {
     const invoke = getTauriInvoker();
     if (invoke) {
-      return (await invoke('activate_steam_overlay')) as boolean;
+      activated = (await invoke('activate_steam_overlay')) as boolean;
     }
   } catch (err) {
     console.warn('Erro ao acionar overlay da Steam via Tauri:', err);
   }
-  return false;
+  if (!activated) window.dispatchEvent(new Event('steam-overlay-unavailable'));
+  return activated;
+}
+
+export function installSteamOverlayShortcut(): () => void {
+  if (!getTauriInvoker()) return () => {};
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key !== 'Tab' || !event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (!event.repeat) void activateSteamOverlay();
+  };
+  window.addEventListener('keydown', onKeyDown, true);
+  return () => window.removeEventListener('keydown', onKeyDown, true);
 }
 
 export async function isSteamRunning(): Promise<boolean> {

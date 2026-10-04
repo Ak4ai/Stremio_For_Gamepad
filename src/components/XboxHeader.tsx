@@ -68,7 +68,7 @@ export const XboxHeader: React.FC<Props> = ({
       <div className="flex items-center pointer-events-auto">
         <div
           onClick={() => onTabChange('settings')}
-          className={`liquid-glass-detail liquid-glass-control w-11 h-11 rounded-[14px] flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer relative overflow-hidden group ${
+          className={`liquid-glass-detail liquid-glass-control ${currentTheme === 'stremio' ? 'w-40 h-14' : 'w-11 h-11'} rounded-[14px] flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer relative overflow-hidden group ${
             isPs1
               ? 'bg-white/10 hover:bg-white/15 border-2 border-white/25 backdrop-blur-xl shadow-xl'
               : 'border shadow-lg'
@@ -81,12 +81,12 @@ export const XboxHeader: React.FC<Props> = ({
                 }
               : {
                   backgroundColor:
-                    currentTheme === 'oled' || currentTheme === 'liquid-glass' || currentTheme === 'steamos' ? 'var(--app-header-bg)' : 'var(--app-accent)',
+                    currentTheme === 'stremio' ? 'transparent' : currentTheme === 'oled' || currentTheme === 'liquid-glass' || currentTheme === 'steamos' ? 'var(--app-header-bg)' : 'var(--app-accent)',
                   borderColor:
-                    currentTheme === 'oled'
+                    currentTheme === 'stremio' ? 'transparent' : currentTheme === 'oled'
                       ? '#2e2e34'
                       : 'rgba(255, 255, 255, 0.15)',
-                  boxShadow: '0 4px 24px var(--app-accent-glow)',
+                  boxShadow: currentTheme === 'stremio' ? 'none' : '0 4px 24px var(--app-accent-glow)',
                 }
           }
           title={`Tema: ${getThemeLabel(currentTheme)}`}
@@ -96,7 +96,9 @@ export const XboxHeader: React.FC<Props> = ({
             <ThemeLogo
               theme={currentTheme}
               className={
-                isPs1
+                currentTheme === 'stremio'
+                  ? 'w-40 h-14'
+                  : isPs1
                   ? 'w-6 h-6'
                   : currentTheme === 'playstation'
                   ? 'w-5 h-5 text-white'

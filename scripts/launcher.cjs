@@ -22,14 +22,14 @@ function isServerAlive() {
 }
 
 async function main() {
-  console.log('[Stremio Deck] Verificando motor de streaming...');
+  console.log('[Steam for Consoles] Verificando motor de streaming...');
 
   let alive = await isServerAlive();
 
   if (alive) {
-    console.log('[Stremio Deck] Motor do Stremio já está ativo na porta 11470.');
+    console.log('[Steam for Consoles] Motor do Stremio já está ativo na porta 11470.');
   } else {
-    console.log('[Stremio Deck] Iniciando motor oficial em segundo plano...');
+    console.log('[Steam for Consoles] Iniciando motor oficial em segundo plano...');
 
     // Determine executable (stremio-runtime or system node)
     const runtimePath = path.join(SERVER_DIR, 'stremio-runtime.exe');
@@ -59,7 +59,7 @@ async function main() {
       await new Promise((r) => setTimeout(r, 500));
       alive = await isServerAlive();
       if (alive) {
-        console.log('[Stremio Deck] Motor pronto na porta 11470!');
+        console.log('[Steam for Consoles] Motor pronto na porta 11470!');
         break;
       }
     }
@@ -68,12 +68,12 @@ async function main() {
   // Start Vite frontend
   try {
     const existing = await fetch('http://127.0.0.1:3000', { signal: AbortSignal.timeout(1000) });
-    if (existing.ok && (await existing.text()).includes('<title>stremio-for-gamepad</title>')) {
-      console.log('[Stremio Deck] Interface já ativa na porta 3000.');
+    if (existing.ok && (await existing.text()).includes('<title>Steam for Consoles</title>')) {
+      console.log('[Steam for Consoles] Interface já ativa na porta 3000.');
       return;
     }
   } catch {}
-  console.log('[Stremio Deck] Iniciando interface Xbox...');
+  console.log('[Steam for Consoles] Iniciando interface Xbox...');
   const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
   
   const viteProc = spawn(npmCmd, ['run', 'dev', '--', '--host', '127.0.0.1'], {

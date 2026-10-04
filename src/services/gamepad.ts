@@ -28,6 +28,12 @@ export class GamepadManager {
   private static typeListeners: Set<ControllerChangeListener> = new Set();
   private static animFrameId: number | null = null;
   private static isRunning = false;
+  private static steamOverlayActive = false;
+
+  public static setSteamOverlayActive(active: boolean) {
+    this.steamOverlayActive = active;
+    this.navHoldTimers = {};
+  }
 
   // Button state tracking for edge detection
   private static prevButtons: boolean[] = [];
@@ -266,6 +272,7 @@ export class GamepadManager {
   }
 
   private static emit(action: GamepadAction) {
+    if (this.steamOverlayActive) return;
     try {
     if (
       action === 'NAV_UP' ||

@@ -1,9 +1,9 @@
 @echo off
-title Stremio Deck
+title Steam for Consoles
 cd /d "%~dp0"
 
 echo ========================================================
-echo               STREMIO FOR GAMEPAD (DECK)
+echo               STEAM FOR CONSOLES
 echo ========================================================
 echo Iniciando motor de streaming e interface Xbox...
 

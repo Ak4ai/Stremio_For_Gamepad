@@ -122,6 +122,7 @@ export const ThemeLogo: React.FC<ThemeLogoProps> = ({
       );
 
     case 'stremio':
+      return <img src="/themes/stremio-classic.png" alt="Stremio" className={`${className} shrink-0 object-contain`} />;
     default:
       return (
         <svg

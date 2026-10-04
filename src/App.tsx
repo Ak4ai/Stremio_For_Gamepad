@@ -18,7 +18,6 @@ import { SettingsView } from './components/SettingsView';
 import { SystemMenuModal } from './components/SystemMenuModal';
 import { AccountService } from './services/account';
 import { SettingsService, applyFullscreen } from './services/settings';
-import { activateSteamOverlay } from './services/system';
 import { SoundService } from './services/sound';
 import { subscribeDualSenseTouchpad } from './services/dualsenseTouchpad';
 import type { StremioAddon } from './types/account';
@@ -85,7 +84,7 @@ export default function App() {
     setToast({ message, type });
     toastTimeoutRef.current = setTimeout(() => {
       setToast(null);
-    }, 2400);
+    }, Math.max(2400, message.length * 65));
   };
 
   const handleToggleLibrary = async (item: StremioMetaPreview) => {
@@ -158,12 +157,16 @@ export default function App() {
           next ? 'add' : 'remove'
         );
       }
-      if (e.shiftKey && e.key === 'Tab') {
-        e.preventDefault();
-        activateSteamOverlay();
-      }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
+    const handleOverlayUnavailable = () => showToast(
+      'Não foi possível ativar o overlay. Confira se ele está habilitado nas propriedades da Steam. O motivo foi registrado nos logs.', 'remove'
+    );
+    window.addEventListener('steam-overlay-unavailable', handleOverlayUnavailable);
+    const handleOverlayState = (event: Event) => {
+      GamepadManager.setSteamOverlayActive((event as CustomEvent<boolean>).detail === true);
+    };
+    window.addEventListener('steam-overlay-state', handleOverlayState);
 
     GamepadManager.init();
     const stopDualSense = subscribeDualSenseTouchpad(() => {}, (pad) => GamepadManager.setHidGamepad(pad, true));
@@ -190,6 +193,9 @@ export default function App() {
 
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown);
+      window.removeEventListener('steam-overlay-unavailable', handleOverlayUnavailable);
+      window.removeEventListener('steam-overlay-state', handleOverlayState);
+      GamepadManager.setSteamOverlayActive(false);
       stopDualSense();
       unsubController();
       unsubAccount();
@@ -817,7 +823,7 @@ export default function App() {
       {/* Floating HUD Toast Notification */}
       {toast && (
         <div
-          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-3.5 rounded-2xl bg-zinc-900/95 backdrop-blur-xl shadow-2xl text-white font-semibold text-sm animate-fade-in pointer-events-none"
+          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-3.5 rounded-2xl bg-zinc-900/95 backdrop-blur-xl shadow-2xl text-white font-semibold text-sm animate-fade-in pointer-events-none w-max max-w-[calc(100vw-2rem)]"
           style={{
             border: '2px solid',
             borderColor: toast.type === 'add' ? '#10b981' : 'var(--app-remove-color, #FF334B)',
@@ -835,7 +841,7 @@ export default function App() {
               style={{ color: 'var(--app-remove-color, #FF334B)' }}
             />
           )}
-          <span className="truncate max-w-md">{toast.message}</span>
+          <span className="min-w-0 max-w-xl whitespace-normal break-words">{toast.message}</span>
         </div>
       )}
     </div>

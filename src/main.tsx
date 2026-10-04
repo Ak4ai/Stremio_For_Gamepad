@@ -2,6 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { installSteamOverlayShortcut } from './services/system'
+
+// Register before React mounts modal capture listeners.
+installSteamOverlayShortcut()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

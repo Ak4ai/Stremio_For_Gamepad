@@ -1,7 +1,7 @@
 {
-  "name": "stremio-for-gamepad",
+  "name": "steam-for-consoles",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.1.5",
   "type": "module",
   "scripts": {
     "start": "node scripts/launcher.cjs",
@@ -17,7 +17,8 @@
     "test:playback:engine": "node scripts/test-playback-engine.cjs",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:build": "tauri build"
+    "tauri:build": "cmd /c scripts\\build-tauri.bat",
+    "test:steam": "node scripts/test-steam-overlay.cjs"
   },
   "dependencies": {
     "hls.js": "^1.7.3",

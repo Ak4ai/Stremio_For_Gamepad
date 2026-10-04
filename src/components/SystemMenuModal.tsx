@@ -40,8 +40,7 @@ export const SystemMenuModal: React.FC<Props> = ({
       icon: <Layers className="w-5 h-5 text-indigo-400" />,
       action: async () => {
         SoundService.playActionConfirm();
-        await activateSteamOverlay();
-        onClose();
+        if (await activateSteamOverlay()) onClose();
       },
     },
     {
@@ -69,7 +68,7 @@ export const SystemMenuModal: React.FC<Props> = ({
     {
       id: 'exit',
       title: 'Sair do Aplicativo',
-      desc: 'Encerra completamente o Stremio For Gamepad e o servidor de mídia',
+      desc: 'Encerra completamente o Steam for Consoles e o servidor de mídia',
       icon: <Power className="w-5 h-5 text-rose-400" />,
       variant: 'danger',
       action: async () => {

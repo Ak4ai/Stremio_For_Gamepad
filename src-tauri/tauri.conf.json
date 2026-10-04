@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Stremio For Gamepad",
-  "version": "0.1.2",
+  "productName": "Steam for Consoles",
+  "version": "0.1.5",
   "identifier": "com.stremio.gamepad",
   "build": {
     "frontendDist": "../dist",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Stremio For Gamepad",
+        "title": "Steam for Consoles",
         "width": 1280,
         "height": 720,
         "minWidth": 960,
@@ -32,7 +32,6 @@
     "active": true,
     "targets": "all",
     "resources": {
-      "../release/steam_api64.dll": "steam_api64.dll",
       "../release/WebView2Loader.dll": "WebView2Loader.dll",
       "../bin/server/": "bin/server/"
     },

@@ -463,7 +463,7 @@ export const SearchModal: React.FC<Props> = ({ onClose, onSelectItem, allCatalog
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.isTrusted !== false) GamepadManager.markKeyboardActive();
       const target = e.target as HTMLElement;
-      if (e.isComposing || e.ctrlKey || e.altKey || e.metaKey) return;
+      if (e.defaultPrevented || (e.shiftKey && e.key === 'Tab') || e.isComposing || e.ctrlKey || e.altKey || e.metaKey) return;
       const editingQuery = target === queryInputRef.current;
       if (!editingQuery && target?.closest?.('input, textarea, [contenteditable="true"]')) return;
       if (target?.closest?.('button, a[href]') && (e.key === 'Enter' || e.key === ' ')) return;

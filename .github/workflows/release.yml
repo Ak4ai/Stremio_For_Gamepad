@@ -1,71 +1,78 @@
 name: Release
-
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version tag (e.g. v0.1.0)'
-        required: false
-        default: 'v0.1.0'
-
+        description: Existing release tag to build
+        required: true
+        default: v0.1.5
 permissions:
   contents: write
-
+concurrency:
+  group: release-${{ inputs.version || github.ref_name }}
+  cancel-in-progress: false
 jobs:
   release:
-    name: Build & Release Desktop App
     runs-on: windows-latest
-
+    env:
+      RELEASE_TAG: ${{ inputs.version || github.ref_name }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
         with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Setup Rust stable
-        uses: dtolnay/rust-toolchain@stable
+          ref: ${{ inputs.version || github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
-
-      - name: Rust Cache
-        uses: swatinem/rust-cache@v2
+      - uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build frontend
-        run: npm run build
-
-      - name: Build Tauri app and create release
+      - name: Restore packaged streaming runtime
+        shell: pwsh
+        run: |
+          gh release download $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --pattern runtime-windows-x64.zip --dir .
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime download failed' }
+          Expand-Archive runtime-windows-x64.zip -DestinationPath . -Force
+          foreach ($path in @('bin/server/stremio-runtime.exe', 'bin/server/ffmpeg.exe', 'bin/server/ffprobe.exe', 'release/WebView2Loader.dll')) {
+            if (!(Test-Path $path)) { throw "Missing bundled resource: $path" }
+          }
+      - run: npm ci
+      - name: Verify application
+        run: |
+          npm run test:steam
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run test:input
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run test:streams
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run test:playback
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test --manifest-path src-tauri/Cargo.toml --lib
+      - name: Build installers
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: '${{ github.ref_name }}'
-          releaseName: 'Stremio For Gamepad ${{ github.ref_name }}'
-          releaseBody: |
-            ## 🎮 Stremio For Gamepad — Release Oficial
-
-            ### ✨ Novidades & Recursos
-            - 🪟 **Modo Tela Cheia por Padrão**: Inicia em fullscreen imersivo para TV, Sofá e Steam Deck (com opção de desativar nas Configurações e atalho F11).
-            - 🎮 **Suporte Completo a Controles**: Detecção e seleção manual para **Steam Deck**, **Xbox**, **DualSense (PlayStation)**, **Nintendo Switch** e **Teclado**.
-            - 🕹️ **Menu de Sistema Rápido**: Abra a qualquer momento pressionando **Start / Menu** para Minimizar, Acessar o GitHub ou Sair do aplicativo.
-            - 💨 **Painel da Steam (Shift+Tab)**: Suporte completo ao Steam Overlay com swapchain D3D11 wgpu e IPC Steamworks ativo.
-            - 🫧 **Liquid Glass Studio Shader**: Efeito óptico translúcido com dispersão cromática, reflexos direcionais e refração Snell física.
-            - 🎨 **5 Temas Imersivos**: Liquid Glass, PS1 32-Bit (com iluminação DualSense), OLED Puro, SteamOS e Stremio Original.
-            - ⚙️ **Streaming Engine Integrado**: Servidor local embutido gerenciando conexões P2P e conversão de vídeo na porta 11470.
-
-            ### 📦 Downloads Disponíveis
-            - **Instalador Oficial (`.exe`)**: Recomendado para instalação rápida com atalhos no Windows.
-            - **Pacote MSI (`.msi`)**: Instalador corporativo Windows Installer.
-          releaseDraft: false
+          tagName: ${{ env.RELEASE_TAG }}
+          releaseName: Steam for Consoles ${{ env.RELEASE_TAG }}
+          releaseDraft: true
           prerelease: false
+      - name: Package portable application and publish
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory portable/bin -Force | Out-Null
+          Copy-Item src-tauri/target/release/app.exe portable/Steam_for_Consoles.exe
+          Copy-Item release/WebView2Loader.dll portable/
+          Copy-Item bin/server portable/bin/server -Recurse
+          Copy-Item THIRD_PARTY_NOTICES.md portable/
+          Compress-Archive portable/* "Steam_for_Consoles_$($env:RELEASE_TAG)_windows-x64.zip"
+          gh release upload $env:RELEASE_TAG "Steam_for_Consoles_$($env:RELEASE_TAG)_windows-x64.zip" --repo $env:GITHUB_REPOSITORY --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Portable upload failed' }
+          gh release edit $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --draft=false --latest
+          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }
