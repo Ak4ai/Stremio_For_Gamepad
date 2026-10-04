@@ -32,6 +32,7 @@
   - 🎮 **PlayStation / DualSense** — (`✕`, `◯`, `▢`, `△`, `L1`, `R1`, `L2`, `R2`) com suporte a touchpad e LED RGB dinâmico.
   - 🕹️ **Nintendo Switch** — Pro Controller e Joy-Cons.
   - ⌨️ **Teclado / PC** — Navegação completa por setas, Enter, Esc, Q/E, 1/2 e teclas de atalho.
+- **Menu do Sistema Rápido**: Pressione <kbd>Start</kbd> (ou <kbd>Options</kbd>, <kbd>+</kbd>, <kbd>Menu</kbd> ou <kbd>M</kbd>) na tela principal para abrir um modal integrado ao tema ativo com opções de **Minimizar**, acessar o **Repositório GitHub** ou **Sair** do aplicativo.
 
 ### 🫧 Liquid Glass Studio Optics
 - Shader físico translúcido inspirado em vidro líquido.
