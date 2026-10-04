@@ -50,11 +50,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
-          releaseName: 'Stremio For Gamepad ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}'
+          tagName: '${{ github.ref_name }}'
+          releaseName: 'Stremio For Gamepad ${{ github.ref_name }}'
           releaseBody: |
             ## 🎮 Stremio For Gamepad — Release Oficial
-            
+
             ### ✨ Novidades & Recursos
             - 🪟 **Modo Tela Cheia por Padrão**: Inicia em fullscreen imersivo para TV, Sofá e Steam Deck (com opção de desativar nas Configurações e atalho F11).
             - 🎮 **Suporte Completo a Controles**: Detecção e seleção manual para **Steam Deck**, **Xbox**, **DualSense (PlayStation)**, **Nintendo Switch** e **Teclado**.
@@ -62,7 +62,7 @@ jobs:
             - 🫧 **Liquid Glass Studio Shader**: Efeito óptico translúcido com dispersão cromática, reflexos direcionais e refração Snell física.
             - 🎨 **5 Temas Imersivos**: Liquid Glass, PS1 32-Bit (com iluminação DualSense), OLED Puro, SteamOS e Stremio Original.
             - ⚙️ **Streaming Engine Integrado**: Servidor local embutido gerenciando conexões P2P e conversão de vídeo na porta 11470.
-            
+
             ### 📦 Downloads Disponíveis
             - **Instalador Oficial (`.exe`)**: Recomendado para instalação rápida com atalhos no Windows.
             - **Pacote MSI (`.msi`)**: Instalador corporativo Windows Installer.
