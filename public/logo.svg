@@ -1,0 +1,272 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Master Controller Shell Gradients (Deep Titanium & Cyber Violet) -->
+    <linearGradient id="controllerShellGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#341f5e"/>
+      <stop offset="35%" stop-color="#21133d"/>
+      <stop offset="75%" stop-color="#150a26"/>
+      <stop offset="100%" stop-color="#0c0517"/>
+    </linearGradient>
+
+    <!-- Ergonomic Wing Highlights (Chiseled Console Plates) -->
+    <linearGradient id="wingHighlightLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6d28d9" stop-opacity="0.85"/>
+      <stop offset="45%" stop-color="#4c1d95" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#1e0b3d" stop-opacity="0.1"/>
+    </linearGradient>
+    <linearGradient id="wingHighlightRight" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#6d28d9" stop-opacity="0.85"/>
+      <stop offset="45%" stop-color="#4c1d95" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#1e0b3d" stop-opacity="0.1"/>
+    </linearGradient>
+
+    <!-- Stremio Losango Master Gradient (Signature Electric Violet to Vivid Orchid) -->
+    <linearGradient id="stremioDiamondGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#bd7aff"/>
+      <stop offset="30%" stop-color="#9333ea"/>
+      <stop offset="70%" stop-color="#7922d9"/>
+      <stop offset="100%" stop-color="#500ca8"/>
+    </linearGradient>
+
+    <!-- Diamond Outer Chiseled Rim Gradient -->
+    <linearGradient id="diamondRimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="20%" stop-color="#e9d5ff"/>
+      <stop offset="60%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#4c1d95"/>
+    </linearGradient>
+
+    <!-- Play Triangle Gradient (High-Gloss Diamond Crystal) -->
+    <linearGradient id="playBtnGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="50%" stop-color="#fdfcff"/>
+      <stop offset="100%" stop-color="#ecdcfc"/>
+    </linearGradient>
+
+    <!-- Neon Glow Trails -->
+    <linearGradient id="neonCyan" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f2fe"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
+
+    <linearGradient id="neonLightbar" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f2fe"/>
+      <stop offset="50%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#f43f5e"/>
+    </linearGradient>
+
+    <!-- Button Wells & Hardware Insets -->
+    <radialGradient id="buttonWellGrad" cx="45%" cy="38%" r="62%">
+      <stop offset="0%" stop-color="#321b54"/>
+      <stop offset="65%" stop-color="#170c2a"/>
+      <stop offset="100%" stop-color="#0a0414"/>
+    </radialGradient>
+
+    <linearGradient id="dpadKeyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4d2982"/>
+      <stop offset="50%" stop-color="#311956"/>
+      <stop offset="100%" stop-color="#1b0c30"/>
+    </linearGradient>
+
+    <!-- Filters & Shadows for Depth and Glow -->
+    <filter id="heroDropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#000000" flood-opacity="0.85"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#581c87" flood-opacity="0.4"/>
+    </filter>
+
+    <filter id="diamondGlow" x="-35%" y="-35%" width="170%" height="170%">
+      <feDropShadow dx="0" dy="0" stdDeviation="22" flood-color="#9333ea" flood-opacity="0.8"/>
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity="0.75"/>
+    </filter>
+
+    <filter id="playGlowFilter" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="0" stdDeviation="14" flood-color="#c084fc" flood-opacity="0.95"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+
+    <filter id="cyanGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#00f2fe" flood-opacity="0.95"/>
+    </filter>
+
+    <filter id="btnSymbolGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#ffffff" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <!-- ========================================== -->
+  <!-- GAMEPAD HARDWARE CHASSIS (CONSOLE PROFILE) -->
+  <!-- ========================================== -->
+  <g filter="url(#heroDropShadow)">
+    <!-- Top Triggers (L2 / R2) -->
+    <path d="M 132 138 C 142 98, 180 84, 212 90 L 222 118 C 192 114, 162 124, 152 146 Z" fill="#201238" stroke="#7e22ce" stroke-width="2"/>
+    <path d="M 380 138 C 370 98, 332 84, 300 90 L 290 118 C 320 114, 350 124, 360 146 Z" fill="#201238" stroke="#7e22ce" stroke-width="2"/>
+
+    <!-- Top Bumpers (L1 / R1) -->
+    <path d="M 152 144 C 168 122, 202 112, 238 116 L 234 140 C 204 136, 174 142, 160 158 Z" fill="#321b57" stroke="#a855f7" stroke-width="2"/>
+    <path d="M 360 144 C 344 122, 310 112, 274 116 L 278 140 C 308 136, 338 142, 352 158 Z" fill="#321b57" stroke="#a855f7" stroke-width="2"/>
+
+    <!-- Main Gamepad Body (Sculpted DualSense / Xbox / Steam Deck Hybrid) -->
+    <path d="M 174 142
+             C 216 128, 296 128, 338 142
+             C 396 156, 448 206, 460 268
+             C 474 334, 442 412, 376 436
+             C 334 450, 300 410, 284 374
+             C 272 342, 240 342, 228 374
+             C 212 410, 178 450, 136 436
+             C 70 412, 38 334, 52 268
+             C 64 206, 116 156, 174 142 Z"
+          fill="url(#controllerShellGrad)"
+          stroke="#6d28d9"
+          stroke-width="3.5"/>
+
+    <!-- Chiseled Grip Faceplates (Left and Right Contoured Wings) -->
+    <path d="M 52 268 C 64 206, 116 156, 174 142 C 142 178, 122 238, 120 306 C 118 360, 134 406, 136 436 C 70 412, 38 334, 52 268 Z"
+          fill="url(#wingHighlightLeft)"/>
+    <path d="M 460 268 C 448 206, 396 156, 338 142 C 370 178, 390 238, 392 306 C 394 360, 378 406, 376 436 C 442 412, 474 334, 460 268 Z"
+          fill="url(#wingHighlightRight)"/>
+
+    <!-- Grip Seam Neon Accent Lines (Cyan Dual-Wings) -->
+    <path d="M 116 198 C 84 246, 76 304, 86 360" fill="none" stroke="url(#neonCyan)" stroke-width="3" stroke-linecap="round" filter="url(#cyanGlow)"/>
+    <path d="M 396 198 C 428 246, 436 304, 426 360" fill="none" stroke="url(#neonCyan)" stroke-width="3" stroke-linecap="round" filter="url(#cyanGlow)"/>
+
+    <!-- Console Status Lightbar (Top Brow Glow) -->
+    <path d="M 212 136 C 240 130, 272 130, 300 136" fill="none" stroke="url(#neonLightbar)" stroke-width="4.5" stroke-linecap="round" filter="url(#cyanGlow)"/>
+  </g>
+
+  <!-- ========================================== -->
+  <!-- CONSOLE CONTROLS: D-PAD & SACRED BUTTONS   -->
+  <!-- ========================================== -->
+  <!-- Left Wing: Console D-PAD -->
+  <g transform="translate(136, 262)">
+    <!-- Recessed Platform Well -->
+    <circle cx="0" cy="0" r="46" fill="url(#buttonWellGrad)" stroke="#4c1d95" stroke-width="2.5"/>
+    <circle cx="0" cy="0" r="42" fill="none" stroke="#7e22ce" stroke-width="1.2" stroke-dasharray="4 4" opacity="0.7"/>
+
+    <!-- Directional Cross Body -->
+    <path d="M -12 -35 L 12 -35 C 14 -35, 14 -33, 14 -24 L 14 -14 L 24 -14 C 33 -14, 35 -14, 35 -12 L 35 12 C 35 14, 33 14, 24 14 L 14 14 L 14 24 C 14 33, 14 35, 12 35 L -12 35 C -14 35, -14 33, -14 24 L -14 14 L -24 14 C -33 14, -35 14, -35 12 L -35 -12 C -35 -14, -33 -14, -24 -14 L -14 -14 L -14 -24 C -14 -33, -14 -35, -12 -35 Z"
+          fill="url(#dpadKeyGrad)"
+          stroke="#9333ea"
+          stroke-width="2"/>
+
+    <!-- Glowing Directional Arrow Markers -->
+    <polygon points="0,-27 -7,-18 7,-18" fill="#e9d5ff" filter="url(#btnSymbolGlow)"/>
+    <polygon points="0,27 -7,18 7,18" fill="#e9d5ff" filter="url(#btnSymbolGlow)"/>
+    <polygon points="-27,0 -18,-7 -18,7" fill="#e9d5ff" filter="url(#btnSymbolGlow)"/>
+    <polygon points="27,0 18,-7 18,7" fill="#e9d5ff" filter="url(#btnSymbolGlow)"/>
+
+    <!-- Center Thumb Pivot Disc -->
+    <circle cx="0" cy="0" r="6" fill="#130826" stroke="#6d28d9" stroke-width="1.5"/>
+  </g>
+
+  <!-- Right Wing: 4 Console Action Buttons (PlayStation Geometry / Xbox Harmony) -->
+  <g transform="translate(376, 262)">
+    <!-- Recessed Platform Well -->
+    <circle cx="0" cy="0" r="46" fill="url(#buttonWellGrad)" stroke="#4c1d95" stroke-width="2.5"/>
+    <circle cx="0" cy="0" r="42" fill="none" stroke="#7e22ce" stroke-width="1.2" stroke-dasharray="4 4" opacity="0.7"/>
+
+    <!-- North Button: Triangle ▲ (PlayStation Green / Xbox Y) -->
+    <circle cx="0" cy="-25" r="11.5" fill="url(#buttonWellGrad)" stroke="#22c55e" stroke-width="2.2"/>
+    <polygon points="0,-32 -6.5,-21 6.5,-21" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linejoin="round" filter="url(#btnSymbolGlow)"/>
+
+    <!-- East Button: Circle ◯ (PlayStation Red / Xbox B) -->
+    <circle cx="25" cy="0" r="11.5" fill="url(#buttonWellGrad)" stroke="#ef4444" stroke-width="2.2"/>
+    <circle cx="25" cy="0" r="6" fill="none" stroke="#f87171" stroke-width="2.5" filter="url(#btnSymbolGlow)"/>
+
+    <!-- South Button: Cross ✕ (PlayStation Blue / Xbox A) -->
+    <circle cx="0" cy="25" r="11.5" fill="url(#buttonWellGrad)" stroke="#06b6d4" stroke-width="2.2"/>
+    <g transform="translate(0, 25)" filter="url(#btnSymbolGlow)">
+      <line x1="-5" y1="-5" x2="5" y2="5" stroke="#38bdf8" stroke-width="2.8" stroke-linecap="round"/>
+      <line x1="5" y1="-5" x2="-5" y2="5" stroke="#38bdf8" stroke-width="2.8" stroke-linecap="round"/>
+    </g>
+
+    <!-- West Button: Square ▢ (PlayStation Pink / Xbox X) -->
+    <circle cx="-25" cy="0" r="11.5" fill="url(#buttonWellGrad)" stroke="#e879f9" stroke-width="2.2"/>
+    <rect x="-30" y="-5" width="10" height="10" rx="1.8" fill="none" stroke="#f472b6" stroke-width="2.5" filter="url(#btnSymbolGlow)"/>
+  </g>
+
+  <!-- Dual Analog Thumbsticks (Lower Flanks) -->
+  <g transform="translate(198, 346)">
+    <circle cx="0" cy="0" r="26" fill="#0d0817" stroke="#4c1d95" stroke-width="2.5"/>
+    <circle cx="0" cy="0" r="22" fill="url(#buttonWellGrad)" stroke="#7e22ce" stroke-width="1.8"/>
+    <circle cx="0" cy="0" r="16" fill="#140a28" stroke="#a855f7" stroke-width="1.2"/>
+    <!-- 4-Axis Grip Ribs -->
+    <circle cx="0" cy="-15" r="2" fill="#c084fc"/>
+    <circle cx="0" cy="15" r="2" fill="#c084fc"/>
+    <circle cx="-15" cy="0" r="2" fill="#c084fc"/>
+    <circle cx="15" cy="0" r="2" fill="#c084fc"/>
+  </g>
+
+  <g transform="translate(314, 346)">
+    <circle cx="0" cy="0" r="26" fill="#0d0817" stroke="#4c1d95" stroke-width="2.5"/>
+    <circle cx="0" cy="0" r="22" fill="url(#buttonWellGrad)" stroke="#7e22ce" stroke-width="1.8"/>
+    <circle cx="0" cy="0" r="16" fill="#140a28" stroke="#a855f7" stroke-width="1.2"/>
+    <!-- 4-Axis Grip Ribs -->
+    <circle cx="0" cy="-15" r="2" fill="#c084fc"/>
+    <circle cx="0" cy="15" r="2" fill="#c084fc"/>
+    <circle cx="-15" cy="0" r="2" fill="#c084fc"/>
+    <circle cx="15" cy="0" r="2" fill="#c084fc"/>
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- HERO CENTER: THE ICONIC STREMIO LOSANGO (DIAMOND SHAPE)  -->
+  <!-- ======================================================== -->
+  <g filter="url(#diamondGlow)">
+    <!-- Outer Beveled Platform (Symmetric 45-degree Rhombus) -->
+    <!-- Center: (256, 240) | Size: 190 x 190 rotated 45 deg -->
+    <rect x="161" y="145" width="190" height="190" rx="38"
+          transform="rotate(45 256 240)"
+          fill="#1b0a33"
+          stroke="url(#diamondRimGrad)"
+          stroke-width="5.5"/>
+
+    <!-- Stremio Core Losango Face -->
+    <rect x="165" y="149" width="182" height="182" rx="34"
+          transform="rotate(45 256 240)"
+          fill="url(#stremioDiamondGrad)"/>
+
+    <!-- Glass Horizon Upper Reflection Sheen -->
+    <path d="M 256 117
+             C 272 133, 336 197, 352 213
+             C 358 219, 352 233, 340 239
+             L 284 259
+             C 264 265, 248 265, 228 259
+             L 172 239
+             C 160 233, 154 219, 160 213
+             L 256 117 Z"
+          fill="#ffffff"
+          opacity="0.25"/>
+
+    <!-- Inner Futuristic Precision Trace Line -->
+    <rect x="174" y="158" width="164" height="164" rx="28"
+          transform="rotate(45 256 240)"
+          fill="none"
+          stroke="#f3e8ff"
+          stroke-width="2"
+          stroke-opacity="0.75"
+          stroke-dasharray="110 8 16 8"/>
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- THE STREMIO PLAY TRIANGLE (HIGH CONTRAST PEARL WHITE)   -->
+  <!-- ======================================================== -->
+  <g filter="url(#playGlowFilter)">
+    <!-- Perfectly Centered Stremio Play Triangle pointing right -->
+    <!-- Balanced around center (256, 240) -->
+    <path d="M 236 202
+             C 236 193, 246 187, 254 192
+             L 298 230
+             C 305 235, 305 245, 298 250
+             L 254 288
+             C 246 293, 236 287, 236 278 Z"
+          fill="url(#playBtnGrad)"/>
+
+    <!-- Inner 3D Edge Bevel -->
+    <path d="M 240 208 L 288 240 L 240 272 Z" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.95"/>
+  </g>
+
+  <!-- Diamond Facet Illuminated Power Nodes (4 Compass Points) -->
+  <circle cx="256" cy="127" r="3.5" fill="#00f2fe" filter="url(#cyanGlow)"/>
+  <circle cx="369" cy="240" r="3.5" fill="#f43f5e" filter="url(#cyanGlow)"/>
+  <circle cx="143" cy="240" r="3.5" fill="#a855f7" filter="url(#cyanGlow)"/>
+  <circle cx="256" cy="353" r="3.5" fill="#00f2fe" filter="url(#cyanGlow)"/>
+</svg>
