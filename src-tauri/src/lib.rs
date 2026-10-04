@@ -58,12 +58,44 @@ fn is_fullscreen(window: tauri::Window) -> bool {
   window.is_fullscreen().unwrap_or(false)
 }
 
+#[tauri::command]
+fn minimize_app(window: tauri::Window) {
+  let _ = window.minimize();
+}
+
+#[tauri::command]
+fn close_app(window: tauri::Window) {
+  let _ = window.close();
+}
+
+#[tauri::command]
+fn open_in_browser(url: String) {
+  #[cfg(windows)]
+  {
+    use std::os::windows::process::CommandExt;
+    let _ = Command::new("cmd")
+      .args(["/c", "start", "", &url])
+      .creation_flags(0x08000000)
+      .spawn();
+  }
+  #[cfg(not(windows))]
+  {
+    let _ = Command::new("xdg-open").arg(&url).spawn();
+  }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   ensure_stremio_server();
 
   tauri::Builder::default()
-    .invoke_handler(tauri::generate_handler![set_fullscreen, is_fullscreen])
+    .invoke_handler(tauri::generate_handler![
+      set_fullscreen,
+      is_fullscreen,
+      minimize_app,
+      close_app,
+      open_in_browser
+    ])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

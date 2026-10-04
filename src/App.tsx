@@ -15,6 +15,7 @@ import { SearchModal } from './components/SearchModal';
 import { LibraryView } from './components/LibraryView';
 import { LoginModal } from './components/LoginModal';
 import { SettingsView } from './components/SettingsView';
+import { SystemMenuModal } from './components/SystemMenuModal';
 import { AccountService } from './services/account';
 import { SettingsService, applyFullscreen } from './services/settings';
 import { SoundService } from './services/sound';
@@ -67,6 +68,7 @@ export default function App() {
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(AccountService.getUser());
   const [userAddons, setUserAddons] = useState<StremioAddon[]>(AccountService.getUserAddons());
 
@@ -109,6 +111,7 @@ export default function App() {
     playingStream,
     isSearchOpen,
     isLoginModalOpen,
+    isSystemMenuOpen,
     activeRowIndex,
     activeColIndex,
     rowColMemory,
@@ -122,6 +125,7 @@ export default function App() {
     playingStream,
     isSearchOpen,
     isLoginModalOpen,
+    isSystemMenuOpen,
     activeRowIndex,
     activeColIndex,
     rowColMemory,
@@ -395,6 +399,7 @@ export default function App() {
         playingStream: curPlayer,
         isSearchOpen: curSearch,
         isLoginModalOpen: curLogin,
+        isSystemMenuOpen: curSystemMenu,
         activeRowIndex: rIdx,
         activeColIndex: cIdx,
       } = stateRef.current;
@@ -410,7 +415,15 @@ export default function App() {
         return;
       }
 
-      // 2. Search Modal Navigation (handled directly by SearchModal)
+      // 2a. System Menu Navigation (handled directly by SystemMenuModal)
+      if (curSystemMenu) {
+        if (action === 'ACTION_B' || action === 'BUTTON_MENU') {
+          setIsSystemMenuOpen(false);
+        }
+        return;
+      }
+
+      // 2b. Search Modal Navigation (handled directly by SearchModal)
       if (curSearch) {
         return;
       }
@@ -441,6 +454,11 @@ export default function App() {
       // 5. Global Actions
       if (action === 'ACTION_Y') {
         setIsSearchOpen(true);
+        return;
+      }
+
+      if (action === 'BUTTON_MENU') {
+        setIsSystemMenuOpen(true);
         return;
       }
 
@@ -546,6 +564,7 @@ export default function App() {
       return [
         { button: 'A', label: 'Assistir / Fontes' },
         { button: 'X', label: 'Remover da Biblioteca' },
+        { button: 'MENU', label: 'Menu' },
         { button: 'LT', label: '' },
         { button: 'RT', label: 'Filtrar' },
         { button: 'LB', label: '' },
@@ -555,6 +574,7 @@ export default function App() {
     if (activeTab === 'settings') {
       return [
         { button: 'A', label: 'Selecionar' },
+        { button: 'MENU', label: 'Menu' },
         { button: 'LB', label: '' },
         { button: 'RB', label: 'Trocar Aba' },
       ];
@@ -566,6 +586,7 @@ export default function App() {
         label: isFocusedInLibrary ? 'Remover da Biblioteca' : 'Salvar na Biblioteca',
       },
       { button: 'Y', label: 'Buscar' },
+      { button: 'MENU', label: 'Menu' },
       { button: 'LB', label: '' },
       { button: 'RB', label: 'Trocar Aba' },
     ];
@@ -779,6 +800,14 @@ export default function App() {
           }}
         />
       )}
+
+      {/* System Menu Modal (Start / Menu) */}
+      <SystemMenuModal
+        isOpen={isSystemMenuOpen}
+        onClose={() => setIsSystemMenuOpen(false)}
+        currentTheme={currentTheme}
+        controllerType={forcedControllerType === 'auto' ? undefined : forcedControllerType}
+      />
 
       {/* Floating HUD Toast Notification */}
       {toast && (
