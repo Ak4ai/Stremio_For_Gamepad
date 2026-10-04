@@ -31,9 +31,11 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "resources": [
-      "../bin/server/*"
-    ],
+    "resources": {
+      "../release/steam_api64.dll": "steam_api64.dll",
+      "../release/WebView2Loader.dll": "WebView2Loader.dll",
+      "../bin/server/": "bin/server/"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
