@@ -51,6 +51,6 @@ echo.
 echo ===================================================
 echo [SUCESSO] Build completo!
 echo Executavel pronto em: release\Stremio_For_Gamepad.exe
-echo Instalador pronto em: release\Stremio For Gamepad_0.1.0_x64-setup.exe
+echo Instaladores prontos em: release\
 echo ===================================================
 echo.
