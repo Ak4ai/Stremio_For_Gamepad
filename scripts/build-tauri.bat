@@ -5,7 +5,7 @@ echo   Steam for Consoles - Compilador Tauri (.exe)
 echo ===================================================
 echo.
 
-set "PATH=E:\msys64\mingw64\bin;C:\Users\HENRIQUE\.cargo\bin;%PATH%"
+set "PATH=E:\msys64\mingw64\bin;%USERPROFILE%\.cargo\bin;%PATH%"
 
 echo 1. Verificando compilador GCC e Rust...
 where gcc >nul 2>&1
