@@ -31,3 +31,12 @@ Steam Deck prompt vectors are exported from [haaldor/Xelu_prompts_SVG](https://g
 # Steam overlay surface
 
 The Windows overlay surface adapts [PSG-Team/tauri-steam-overlay-surface](https://github.com/PSG-Team/tauri-steam-overlay-surface) 0.1.3 (MIT), copyright 2026 The Private Sector Group, LLC (PSG Studios). Source, original license, and local changes are preserved in `src-tauri/vendor/steam-overlay-surface/`.
+
+
+# Stremio streaming server (bin/server)
+
+O diretório `bin/server` contém o servidor de streaming do Stremio, distribuído sob a GNU General Public License v2 (o texto completo está em `bin/server/LICENSE.md`). Ele não foi escrito neste projeto e é executado como um processo separado, na porta local 11470.
+
+# Runtime empacotado, ffmpeg e ffprobe
+
+As releases também incluem o runtime do Node usado pelo servidor acima e os binários `ffmpeg` e `ffprobe`, que não fazem parte do código deste repositório. Cada um segue a licença de sua distribuição original.

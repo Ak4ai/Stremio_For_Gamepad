@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Tauri-2.0-24C8D8?style=for-the-badge&logo=tauri&logoColor=white" alt="Tauri 2" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React 19" />
   <img src="https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Steam_Deck-Verified-171A21?style=for-the-badge&logo=steam&logoColor=white" alt="Steam Deck" />
+  <img src="https://img.shields.io/badge/Steam_Deck-Supported-171A21?style=for-the-badge&logo=steam&logoColor=white" alt="Steam Deck supported" />
   <img src="https://img.shields.io/badge/Windows-10%2F11-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows" />
 </p>
 
@@ -107,6 +107,8 @@ O repositório inclui automação completa via [GitHub Actions](.github/workflow
 
 ## 📄 Licença
 Distribuído sob a licença MIT. Consulte `LICENSE` para mais informações.
+
+Projeto independente, sem afiliação com o Stremio ou a Valve. Componentes de terceiros e suas licenças estão em `THIRD_PARTY_NOTICES.md`.
 
 ## Steam Overlay (Windows)
 
