@@ -1,6 +1,6 @@
 export const GITHUB_REPO_URL = 'https://github.com/Ak4ai/Stremio_For_Gamepad';
 
-function getTauriInvoker(): ((cmd: string, args?: Record<string, unknown>) => Promise<unknown>) | null {
+export function getTauriInvoker(): ((cmd: string, args?: Record<string, unknown>) => Promise<unknown>) | null {
   const win = window as unknown as {
     __TAURI_INTERNALS__?: { invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown> };
     __TAURI__?: { core?: { invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown> } };
@@ -54,19 +54,27 @@ export async function openUrl(url: string): Promise<void> {
 }
 
 let overlayRequest: Promise<boolean> | null = null;
+let lastOverlayRequestTime = 0;
+let lastOverlayResult = false;
 
-export function activateSteamOverlay(): Promise<boolean> {
+export function activateSteamOverlay(toggle = false): Promise<boolean> {
   if (overlayRequest) return overlayRequest;
-  overlayRequest = requestSteamOverlay().finally(() => { overlayRequest = null; });
+  const now = Date.now();
+  if (now - lastOverlayRequestTime < 1500) {
+    return Promise.resolve(lastOverlayResult);
+  }
+  lastOverlayRequestTime = now;
+  overlayRequest = requestSteamOverlay(toggle).then((result) => { lastOverlayResult = result; return result; })
+    .finally(() => { overlayRequest = null; });
   return overlayRequest;
 }
 
-async function requestSteamOverlay(): Promise<boolean> {
+async function requestSteamOverlay(toggle: boolean): Promise<boolean> {
   let activated = false;
   try {
     const invoke = getTauriInvoker();
     if (invoke) {
-      activated = (await invoke('activate_steam_overlay')) as boolean;
+      activated = (await invoke('activate_steam_overlay', { toggle })) as boolean;
     }
   } catch (err) {
     console.warn('Erro ao acionar overlay da Steam via Tauri:', err);
@@ -81,7 +89,7 @@ export function installSteamOverlayShortcut(): () => void {
     if (event.key !== 'Tab' || !event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (!event.repeat) void activateSteamOverlay();
+    if (!event.repeat) void activateSteamOverlay(true);
   };
   window.addEventListener('keydown', onKeyDown, true);
   return () => window.removeEventListener('keydown', onKeyDown, true);

@@ -4,6 +4,7 @@ import type { StremioMetaPreview } from '../types/stremio';
 import { StremioService } from '../services/stremio';
 import { GamepadManager, type GamepadAction } from '../services/gamepad';
 import { SoundService } from '../services/sound';
+import { activateSteamOverlay } from '../services/system';
 import { ControllerButtonBadge } from './ControllerButtonBadge';
 import { MediaCard } from './MediaCard';
 import { LiquidGlassRail } from './LiquidGlassRail';
@@ -521,6 +522,11 @@ export const SearchModal: React.FC<Props> = ({ onClose, onSelectItem, allCatalog
 
       const items = displayedItems;
       const RESULTS_COLS = 3; // 3 columns on search results grid
+
+      if (action === 'BUTTON_GUIDE') {
+        void activateSteamOverlay();
+        return;
+      }
 
       if (action === 'TOUCHPAD_CLICK') {
         activateTouchpadKey();

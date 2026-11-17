@@ -6,7 +6,7 @@ import { SoundService } from '../services/sound';
 import { ControllerButtonBadge } from './ControllerButtonBadge';
 import { LiquidGlassLayer } from './LiquidGlassLayer';
 import { minimizeApp, closeApp, openUrl, activateSteamOverlay, GITHUB_REPO_URL } from '../services/system';
-import { Minus, ExternalLink, Power, X, Terminal, Layers } from 'lucide-react';
+import { Minus, ExternalLink, Power, X, Terminal, Layers, Gamepad2 } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -16,7 +16,7 @@ interface Props {
 }
 
 interface MenuItem {
-  id: 'minimize' | 'github' | 'steam' | 'exit' | 'cancel';
+  id: 'minimize' | 'github' | 'steam' | 'glyphs' | 'exit' | 'cancel';
   title: string;
   desc: string;
   icon: React.ReactNode;
@@ -31,16 +31,54 @@ export const SystemMenuModal: React.FC<Props> = ({
   controllerType,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
+  const [activeForcedType, setActiveForcedType] = useState<'auto' | ControllerType>(GamepadManager.forcedType);
+
+  useEffect(() => {
+    setActiveForcedType(GamepadManager.forcedType);
+  }, [isOpen]);
+
+  const cycleForcedType = () => {
+    const sequence: ('auto' | ControllerType)[] = ['auto', 'playstation', 'xbox', 'steam-deck', 'nintendo'];
+    const curIdx = sequence.indexOf(activeForcedType);
+    const nextType = sequence[(curIdx + 1) % sequence.length];
+    GamepadManager.setForcedType(nextType);
+    setActiveForcedType(nextType);
+  };
+
+  const getGlyphLabel = () => {
+    switch (activeForcedType) {
+      case 'playstation':
+        return 'PlayStation (✕, ◯, ▢, △)';
+      case 'xbox':
+        return 'Xbox (A, B, X, Y)';
+      case 'steam-deck':
+        return 'Steam Deck (Valve)';
+      case 'nintendo':
+        return 'Nintendo Switch';
+      default:
+        return 'Automático (Detectar)';
+    }
+  };
 
   const menuItems: MenuItem[] = [
     {
       id: 'steam',
-      title: 'Painel da Steam (Shift+Tab)',
+      title: 'Painel da Steam (Shift+Tab / Botão Guia)',
       desc: 'Abre a interface sobreposta da Steam para amigos, chat e configurações',
       icon: <Layers className="w-5 h-5 text-indigo-400" />,
       action: async () => {
         SoundService.playActionConfirm();
         if (await activateSteamOverlay()) onClose();
+      },
+    },
+    {
+      id: 'glyphs',
+      title: `Glifos do Controle: ${getGlyphLabel()}`,
+      desc: 'Alterna os ícones na tela entre PlayStation (DualSense), Xbox e Steam Deck',
+      icon: <Gamepad2 className="w-5 h-5 text-amber-400" />,
+      action: () => {
+        SoundService.playActionConfirm();
+        cycleForcedType();
       },
     },
     {
@@ -119,12 +157,17 @@ export const SystemMenuModal: React.FC<Props> = ({
           SoundService.playBack();
           onClose();
           break;
+
+        case 'BUTTON_GUIDE':
+          void activateSteamOverlay();
+          onClose();
+          break;
       }
     };
 
     const unsubscribe = GamepadManager.subscribe(handleGamepadAction);
     return () => unsubscribe();
-  }, [isOpen, selectedIndex]);
+  }, [isOpen, selectedIndex, activeForcedType]);
 
   // Keyboard navigation fallback
   useEffect(() => {
@@ -151,7 +194,7 @@ export const SystemMenuModal: React.FC<Props> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, selectedIndex]);
+  }, [isOpen, selectedIndex, activeForcedType]);
 
   if (!isOpen) return null;
 

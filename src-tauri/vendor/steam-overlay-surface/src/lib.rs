@@ -189,6 +189,14 @@ pub fn surface_active() -> bool {
 ///   Steam paints opaque frames forever — a visible decoy blacks out the
 ///   game), go back to click-through, drop the backdrop, and return focus to
 ///   the main window (or the webview goes deaf).
+/// Reveal the app's return indicator without changing native keyboard focus
+/// or stopping presentation while Steam finishes releasing input.
+pub fn set_returning_to_app<R: Runtime>(app: &AppHandle<R>, returning: bool) {
+    if let Some(window) = app.get_window(OVERLAY_LABEL) {
+        surface::cloak_window(&window, returning);
+    }
+}
+
 pub fn on_overlay_activated<R: Runtime>(app: &AppHandle<R>, active: bool) {
     let already_active = surface::STEAM_OVERLAY_ACTIVE.swap(active, Ordering::Relaxed);
     // The initial request and Steam's confirmation describe the same opening.
@@ -222,9 +230,10 @@ pub fn on_overlay_activated<R: Runtime>(app: &AppHandle<R>, active: bool) {
             }
         }
         let _ = w.show();
+        surface::cloak_window(&w, false);
         let _ = w.set_focus();
     } else {
-        let _ = w.hide();
+        surface::show_cloaked(&w);
         snapshot::clear_snapshot();
         if let Some(main) = app.get_window(&config.0.main_window_label) {
             let _ = main.set_focus();

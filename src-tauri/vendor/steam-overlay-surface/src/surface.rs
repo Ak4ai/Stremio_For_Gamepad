@@ -53,6 +53,7 @@ extern "system" {
     fn GetAncestor(hwnd: isize, flags: u32) -> isize;
     fn GetWindowLongPtrW(hwnd: isize, idx: i32) -> isize;
     fn SetWindowLongPtrW(hwnd: isize, idx: i32, value: isize) -> isize;
+    fn ShowWindow(hwnd: isize, cmd: i32) -> i32;
 }
 
 #[cfg(windows)]
@@ -79,6 +80,13 @@ pub(crate) fn cloak_window<R: Runtime>(window: &Window<R>, cloaked: bool) -> boo
         return unsafe { DwmSetWindowAttribute(hwnd.0 as isize, 13, &value, 4) >= 0 };
     }
     #[cfg(not(windows))] { let _ = (window, cloaked); false }
+}
+
+pub(crate) fn show_cloaked<R: Runtime>(window: &Window<R>) {
+    if !cloak_window(window, true) { let _ = window.hide(); return; }
+    #[cfg(windows)] {
+        if let Ok(hwnd) = window.hwnd() { unsafe { ShowWindow(hwnd.0 as isize, 4); } }
+    }
 }
 
 /// Give up on the surface after this many consecutive failed frames
@@ -180,7 +188,7 @@ pub(crate) fn spawn<R: Runtime>(main: Window<R>, config: Config) {
                         let _ = ov.set_ignore_cursor_events(false);
                     }
                 } else if !STEAM_OVERLAY_ACTIVE.load(Ordering::Relaxed) {
-                    let _ = ov.hide();
+                    cloak_window(&ov, true);
                 }
             }
         });
@@ -218,7 +226,7 @@ pub(crate) fn spawn<R: Runtime>(main: Window<R>, config: Config) {
                         // alt-tab simply covers it; no hide needed while active.
                         if !ours && visible && !overlay_active {
                             let _ = ov.set_ignore_cursor_events(true);
-                            let _ = ov.hide();
+                            cloak_window(&ov, true);
                         }
                     }
                 }
@@ -445,8 +453,7 @@ fn run_surface<R: Runtime>(
     let mut warmup_frames = 20;
     // A hidden HWND does not start Steam's UI even when its readiness export
     // returns true. Warm a visible but DWM-cloaked HWND without covering the app.
-    let mut warmup_cloaked = cloak_window(overlay, true);
-    if warmup_cloaked { let _ = overlay.show(); }
+    show_cloaked(overlay);
     loop {
         // Main window gone → close the overlay too, or the app never exits
         // (Tauri quits when the *last* window closes).
@@ -651,13 +658,11 @@ fn run_surface<R: Runtime>(
                 if warming {
                     std::thread::sleep(Duration::from_millis(16));
                     if warmup_frames == 0 {
-                        if warmup_cloaked {
-                            if !STEAM_OVERLAY_ACTIVE.load(Ordering::Relaxed) { let _ = overlay.hide(); }
-                            cloak_window(overlay, false);
-                            warmup_cloaked = false;
-                        }
-                        log::info!("steam-overlay-surface: hidden warmup complete; idle presentation paused");
+                        log::info!("steam-overlay-surface: hidden warmup complete; cloaked presentation stays live");
                     }
+                }
+                if !STEAM_OVERLAY_ACTIVE.load(Ordering::Relaxed) {
+                    std::thread::sleep(Duration::from_millis(16));
                 }
             }
             Err(err) => {

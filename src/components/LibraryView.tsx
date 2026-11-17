@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import type { StremioMetaPreview } from '../types/stremio';
 import { FALLBACK_POSTER } from '../utils/posterFallback';
+import { isContinueWatching, progressPercent, remainingMinutes as minutesLeft } from '../utils/libraryProgress';
 
 interface Props {
   isActive?: boolean;
@@ -70,9 +71,11 @@ export const LibraryView: React.FC<Props> = ({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const gridItemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const libraryRequestRef = useRef(0);
 
   // Fetch library
   const fetchLibrary = async (forceRefresh: boolean = false) => {
+    const request = ++libraryRequestRef.current;
     if (forceRefresh) setSyncing(true);
     else setLoading(true);
 
@@ -83,6 +86,8 @@ export const LibraryView: React.FC<Props> = ({
 
     setLoading(false);
     setSyncing(false);
+    const enriched = await AccountService.enrichLibrary(items);
+    if (request === libraryRequestRef.current) setLibrary(enriched);
   };
 
   useEffect(() => {
@@ -107,11 +112,9 @@ export const LibraryView: React.FC<Props> = ({
   // Filtered items
   const filteredItems = library.filter((item) => {
     if (filter === 'movies') return item.type === 'movie';
-    if (filter === 'series') return item.type === 'series';
+    if (filter === 'series') return item.type === 'series' || item.type === 'anime';
     if (filter === 'watching') {
-      const offset = item.state?.timeOffset || 0;
-      const dur = item.state?.duration || 1;
-      return offset > 0 && offset < dur * 0.95;
+      return isContinueWatching(item.state);
     }
     if (filter === 'unwatched') {
       const offset = item.state?.timeOffset || 0;
@@ -262,6 +265,10 @@ export const LibraryView: React.FC<Props> = ({
                 name: target.name,
                 type: target.type,
                 poster: target.poster,
+                background: target.background,
+                logo: target.logo,
+                description: target.description,
+                state: target.state,
                 year: target.year,
                 imdbRating: target.imdbRating,
                 genres: target.genres,
@@ -279,6 +286,10 @@ export const LibraryView: React.FC<Props> = ({
                 name: target.name,
                 type: target.type,
                 poster: target.poster,
+                background: target.background,
+                logo: target.logo,
+                description: target.description,
+                state: target.state,
                 year: target.year,
                 imdbRating: target.imdbRating,
                 genres: target.genres,
@@ -330,7 +341,7 @@ export const LibraryView: React.FC<Props> = ({
   }, [focusedGridIdx, navZone]);
 
   const watchingCount = library.filter(
-    (i) => (i.state?.timeOffset || 0) > 0 && (i.state?.timeOffset || 0) < (i.state?.duration || 1) * 0.95
+    (i) => isContinueWatching(i.state)
   ).length;
 
   const unwatchedCount = library.filter(
@@ -548,21 +559,18 @@ export const LibraryView: React.FC<Props> = ({
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
           {filteredItems.map((item, idx) => {
             const isFocused = navZone === 'grid' && focusedGridIdx === idx;
-            const progress =
-              item.state?.duration && item.state.timeOffset
-                ? Math.min(100, Math.floor((item.state.timeOffset / item.state.duration) * 100))
-                : 0;
-
-            const remainingMinutes =
-              item.state?.duration && item.state.timeOffset
-                ? Math.max(1, Math.round((item.state.duration - item.state.timeOffset) / 60))
-                : null;
+            const progress = progressPercent(item.state);
+            const remainingMinutes = minutesLeft(item.state) ?? null;
 
             const metaPreview: StremioMetaPreview = {
               id: item._id,
               name: item.name,
               type: item.type,
               poster: item.poster,
+              background: item.background,
+              logo: item.logo,
+              description: item.description,
+              state: item.state,
               year: item.year,
               imdbRating: item.imdbRating,
               genres: item.genres,

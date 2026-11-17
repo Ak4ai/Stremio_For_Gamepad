@@ -5,6 +5,8 @@ import { Star, Film, Tv, Calendar, Bookmark, BookmarkMinus } from 'lucide-react'
 import { ControllerButtonBadge } from './ControllerButtonBadge';
 import { ThemeService } from '../services/theme';
 import type { ThemeId } from '../types/theme';
+import { MediaTitle } from './MediaTitle';
+import { StremioService } from '../services/stremio';
 
 interface Props {
   item: StremioMetaPreview | null;
@@ -22,6 +24,21 @@ export const HeroSpotlight: React.FC<Props> = ({
   onDetails,
 }) => {
   const [currentTheme, setCurrentTheme] = useState<ThemeId>(() => ThemeService.getTheme());
+  const [artwork, setArtwork] = useState<StremioMetaPreview | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    // Only request the focused title after navigation settles, not every
+    // card the controller crosses. Catalog and cached library logos need no
+    // additional request.
+    const timer = setTimeout(() => {
+      if (item && !item.logo && !item.id.startsWith('tt')) {
+        void StremioService.getMeta(item.type, item.id).then((meta) => {
+          if (!cancelled) setArtwork(meta);
+        });
+      }
+    }, 220);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [item?.id, item?.type, item?.logo]);
 
   useEffect(() => {
     return ThemeService.subscribe((t) => setCurrentTheme(t));
@@ -128,9 +145,7 @@ export const HeroSpotlight: React.FC<Props> = ({
         </div>
 
         {/* Title */}
-        <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight drop-shadow-lg line-clamp-1 mb-2">
-          {item.name}
-        </h1>
+        <MediaTitle item={artwork?.id === item.id && artwork.type === item.type ? { ...item, logo: item.logo || artwork.logo } : item} className="text-3xl md:text-4xl font-black text-white tracking-tight drop-shadow-lg mb-2" />
 
         {/* Synopsis */}
         <p className="text-xs md:text-sm text-zinc-300/90 line-clamp-2 leading-relaxed mb-4 drop-shadow-md max-w-2xl">

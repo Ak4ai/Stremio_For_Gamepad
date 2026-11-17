@@ -2,6 +2,7 @@ import React from 'react';
 import type { StremioMetaPreview } from '../types/stremio';
 import { Star, Clock } from 'lucide-react';
 import { FALLBACK_POSTER } from '../utils/posterFallback';
+import { progressPercent, remainingMinutes as minutesLeft } from '../utils/libraryProgress';
 
 interface Props {
   item: StremioMetaPreview;
@@ -13,19 +14,10 @@ export const MediaCard: React.FC<Props> = ({ item, isFocused, onClick }) => {
   const posterUrl = item.poster || item.banner || item.background || FALLBACK_POSTER;
 
   // Calculate watching progress and remaining time
-  const progress =
-    typeof item.progress === 'number'
-      ? item.progress
-      : item.state?.duration && item.state.timeOffset
-      ? Math.min(100, Math.floor((item.state.timeOffset / item.state.duration) * 100))
-      : 0;
+  const progress = typeof item.progress === 'number' ? item.progress : progressPercent(item.state);
 
   const remainingMinutes =
-    typeof item.remainingMinutes === 'number'
-      ? item.remainingMinutes
-      : item.state?.duration && item.state.timeOffset
-      ? Math.max(1, Math.round((item.state.duration - item.state.timeOffset) / 60))
-      : null;
+    typeof item.remainingMinutes === 'number' ? item.remainingMinutes : (minutesLeft(item.state) ?? null);
 
   return (
     <div

@@ -1,13 +1,18 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { LiquidGlassLayer } from './LiquidGlassLayer';
+import { MediaTitle } from './MediaTitle';
+import { mediaLogoUrl } from '../services/logoImages';
 import Hls from 'hls.js';
 import type { StremioMetaDetail, StremioMetaPreview, StremioStream, StremioSubtitle } from '../types/stremio';
 import { StremioService } from '../services/stremio';
 import { SettingsService } from '../services/settings';
 import { ControllerButtonBadge } from './ControllerButtonBadge';
 import { GamepadManager, type GamepadAction } from '../services/gamepad';
+import { activateSteamOverlay } from '../services/system';
 import { parseStream } from '../utils/streamParser';
 import { adjacentEpisodes, preferredEpisodeStream } from '../utils/episodeNavigation';
+import { AccountService } from '../services/account';
+import { WatchSession } from '../services/watchProgress';
 import {
   formatLanguageName,
   getFallbackSubtitles,
@@ -43,6 +48,17 @@ interface Props {
   onEpisodeChange?: (stream: StremioStream, streamId: string, streams: StremioStream[]) => void;
 }
 
+/** L2/R2 (LT/RT) jump; the D-Pad ◀ ▶ fine-tunes. */
+const SKIP_SECONDS = 45;
+const FINE_SKIP_SECONDS = 5;
+
+/** "45s", "1m 30s", "3m" */
+const formatSkip = (seconds: number) => {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m === 0 ? `${s}s` : s === 0 ? `${m}m` : `${m}m ${s}s`;
+};
+
 interface AudioTrackOption {
   id: string;
   label: string;
@@ -69,12 +85,49 @@ export const VideoPlayer: React.FC<Props> = ({
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [needsInteraction, setNeedsInteraction] = useState(false);
   const volumeRef = useRef(1);
-  const resumeTimeRef = useRef(0);
+  // Where the user stopped last time (synced Stremio library); applied once the video has a duration.
+  const videoId = streamId || meta.id;
+  const [resumeFrom, setResumeFrom] = useState(() => AccountService.getResumeSeconds(meta.id, videoId));
+  const resumeTimeRef = useRef(resumeFrom);
+  // Saves position / episode back to the Stremio library while watching
+  const watchSessionRef = useRef<WatchSession | null>(null);
+  if (!watchSessionRef.current) {
+    watchSessionRef.current = new WatchSession(
+      { id: meta.id, type: meta.type, name: meta.name, poster: meta.poster },
+      videoId
+    );
+  }
+  const lastTickRef = useRef<number | null>(null);
+  useEffect(() => {
+    const session = watchSessionRef.current;
+    let cancelled = false;
+    // The cloud may be ahead of the local cache (watched on another device): if the video
+    // hasn't started yet, resume from the cloud position instead.
+    void session?.remoteResumeSeconds().then((remote) => {
+      const video = videoRef.current;
+      if (cancelled || remote <= 0 || (video && video.currentTime > 1)) return;
+      if (Math.abs(remote - resumeTimeRef.current) < 3) return;
+      setResumeFrom(remote);
+      if (video && Number.isFinite(video.duration) && video.duration > 0) {
+        video.currentTime = Math.min(remote, video.duration);
+      } else {
+        resumeTimeRef.current = remote;
+      }
+    });
+    // Leaving the player (or switching episode) saves where it stopped.
+    return () => {
+      cancelled = true;
+      void session?.save(true);
+    };
+  }, []);
   const [playbackAttempt, setPlaybackAttempt] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isBuffering, setIsBuffering] = useState(true);
+  const isBufferingRef = useRef(true);
+  isBufferingRef.current = isBuffering;
   const [pauseControl, setPauseControl] = useState(1);
   const [episodeVideos, setEpisodeVideos] = useState<StremioMetaDetail['videos']>((meta as StremioMetaDetail).videos);
+  const [titleArtwork, setTitleArtwork] = useState<StremioMetaPreview | null>(null);
   const [episodeChanging, setEpisodeChanging] = useState(false);
   const [episodeError, setEpisodeError] = useState<string | null>(null);
   const episodeRequestRef = useRef(0);
@@ -88,8 +141,11 @@ export const VideoPlayer: React.FC<Props> = ({
   }, [episodeVideos, streamId, meta.type]);
   useEffect(() => {
     let cancelled = false;
-    if (meta.type === 'series' && onEpisodeChange && !(meta as StremioMetaDetail).videos) {
-      void StremioService.getMeta(meta.type, meta.id).then((detail) => { if (!cancelled) setEpisodeVideos(detail?.videos); });
+    const needsEpisodes = (meta.type === 'series' || meta.type === 'anime') && onEpisodeChange && !(meta as StremioMetaDetail).videos;
+    if (needsEpisodes || !mediaLogoUrl(meta)) {
+      void StremioService.getMeta(meta.type, meta.id).then((detail) => {
+        if (!cancelled && detail) { if (needsEpisodes) setEpisodeVideos(detail.videos); setTitleArtwork(detail); }
+      });
     }
     return () => { cancelled = true; episodeRequestRef.current++; };
   }, [meta, onEpisodeChange]);
@@ -292,8 +348,15 @@ export const VideoPlayer: React.FC<Props> = ({
     }
     if (!videoRef.current) return;
     const v = videoRef.current;
-    const newTime = Math.min(v.duration || 0, Math.max(0, v.currentTime + seconds));
-    v.currentTime = newTime;
+    let newTime: number;
+    if (Number.isFinite(v.duration) && v.duration > 0) {
+      newTime = Math.min(v.duration, Math.max(0, v.currentTime + seconds));
+      v.currentTime = newTime;
+    } else {
+      // Still loading (duration unknown): queue the jump, applied on loadedmetadata like a resume.
+      newTime = Math.max(0, (resumeTimeRef.current || v.currentTime) + seconds);
+      resumeTimeRef.current = newTime;
+    }
     setCurrentTime(newTime);
 
     setSeekFeedback((prev) => {
@@ -306,10 +369,17 @@ export const VideoPlayer: React.FC<Props> = ({
       };
     });
 
+    // Keep the skip amount on screen while the jump is still loading, so the user
+    // knows how far they went (and the total keeps adding up if they press again).
     if (seekFeedbackTimerRef.current) clearTimeout(seekFeedbackTimerRef.current);
-    seekFeedbackTimerRef.current = window.setTimeout(() => {
+    const hideWhenLoaded = () => {
+      if (isBufferingRef.current) {
+        seekFeedbackTimerRef.current = window.setTimeout(hideWhenLoaded, 400);
+        return;
+      }
       setSeekFeedback(null);
-    }, 1400);
+    };
+    seekFeedbackTimerRef.current = window.setTimeout(hideWhenLoaded, 1400);
 
     updateActiveSubtitle(newTime);
     resetOsdTimer();
@@ -1045,7 +1115,7 @@ export const VideoPlayer: React.FC<Props> = ({
           } else if (now - ltHoldStart > 350) {
             if (now - lastHoldAdvance > 200) {
               lastHoldAdvance = now;
-              triggerSeek(-15);
+              triggerSeek(-SKIP_SECONDS);
             }
           }
         } else {
@@ -1061,7 +1131,7 @@ export const VideoPlayer: React.FC<Props> = ({
           } else if (now - rtHoldStart > 350) {
             if (now - lastHoldAdvance > 200) {
               lastHoldAdvance = now;
-              triggerSeek(15);
+              triggerSeek(SKIP_SECONDS);
             }
           }
         } else {
@@ -1104,6 +1174,11 @@ export const VideoPlayer: React.FC<Props> = ({
 
       const video = vRef.current;
       resetOsdTimer();
+
+      if (action === 'BUTTON_GUIDE') {
+        void activateSteamOverlay();
+        return;
+      }
 
       if (stateRef.current.playbackError || stateRef.current.needsInteraction) {
         if (action === 'ACTION_B') handleExit();
@@ -1262,13 +1337,13 @@ export const VideoPlayer: React.FC<Props> = ({
           break;
 
         case 'TRIGGER_LT':
-          // Left Trigger: Retrocede 15s no toque
-          handleSeek(-15);
+          // Left Trigger: retrocede no toque
+          handleSeek(-SKIP_SECONDS);
           break;
 
         case 'TRIGGER_RT':
-          // Right Trigger: Avança 15s no toque
-          handleSeek(15);
+          // Right Trigger: avança no toque
+          handleSeek(SKIP_SECONDS);
           break;
 
         case 'TRIGGER_LB':
@@ -1282,11 +1357,11 @@ export const VideoPlayer: React.FC<Props> = ({
           break;
 
         case 'NAV_LEFT':
-          handleSeek(-10);
+          handleSeek(-FINE_SKIP_SECONDS);
           break;
 
         case 'NAV_RIGHT':
-          handleSeek(10);
+          handleSeek(FINE_SKIP_SECONDS);
           break;
 
         case 'NAV_UP':
@@ -1347,12 +1422,23 @@ export const VideoPlayer: React.FC<Props> = ({
             if (videoRef.current.volume === 0 && volume > 0) videoRef.current.volume = volume;
           }
         }}
-        onPause={() => { setIsPlaying(false); stateRef.current.pauseControl = 1; setPauseControl(1); }}
+        onPause={() => {
+          setIsPlaying(false);
+          stateRef.current.pauseControl = 1;
+          setPauseControl(1);
+          void watchSessionRef.current?.save(false);
+        }}
         onTimeUpdate={() => {
           if (videoRef.current) {
-            const cur = videoRef.current.currentTime;
+            const v = videoRef.current;
+            const cur = v.currentTime;
             setCurrentTime(cur);
             updateActiveSubtitle(cur);
+            // Only real playback counts as time watched (seeks jump more than a few seconds).
+            const prev = lastTickRef.current;
+            const delta = prev !== null && !v.paused ? cur - prev : 0;
+            lastTickRef.current = cur;
+            watchSessionRef.current?.tick(cur, v.duration, delta > 0 && delta < 3 ? delta : 0);
           }
         }}
         onWaiting={() => setIsBuffering(true)}
@@ -1373,7 +1459,10 @@ export const VideoPlayer: React.FC<Props> = ({
           }
           detectAudioTracks();
         }}
-        onEnded={onExit}
+        onEnded={() => {
+          void watchSessionRef.current?.save(true);
+          onExit();
+        }}
         className="w-full h-full object-contain transition-[filter] duration-150"
         style={{ filter: brightness !== 100 ? `brightness(${brightness}%)` : undefined }}
       />
@@ -1421,6 +1510,11 @@ export const VideoPlayer: React.FC<Props> = ({
           {currentEpisode && (
             <p className="text-xs font-bold mb-2" style={{ color: 'var(--app-accent)' }}>
               Temporada {currentEpisode.season} · Episódio {currentEpisode.episode}
+            </p>
+          )}
+          {resumeFrom > 0 && (
+            <p className="text-xs font-semibold text-zinc-200 mb-2">
+              Continuando de onde parou: {formatTime(resumeFrom)}
             </p>
           )}
           <p className="text-xs font-semibold text-zinc-400 animate-pulse text-center px-4 max-w-lg">
@@ -1526,24 +1620,6 @@ export const VideoPlayer: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Floating HUD: Seek Feedback Indicator */}
-      {seekFeedback && (
-        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-2.5 rounded-2xl app-card-panel backdrop-blur-xl shadow-2xl text-white font-bold text-sm animate-fade-in pointer-events-none">
-          {seekFeedback.type === 'rewind' ? (
-            <Rewind className="w-5 h-5 text-sky-400 animate-pulse" />
-          ) : (
-            <FastForward className="w-5 h-5 animate-pulse" style={{ color: 'var(--app-accent)' }} />
-          )}
-          <span className="font-mono text-base">
-            {seekFeedback.type === 'rewind' ? '-' : '+'}
-            {seekFeedback.cumulative || seekFeedback.seconds}s
-          </span>
-          <span className="text-xs text-zinc-400 font-normal">
-            ({formatTime(currentTime)})
-          </span>
-        </div>
-      )}
-
       {/* Subtitle Loading Notification */}
       {loadingSub && (
         <div className="absolute top-10 right-10 z-40 flex items-center gap-2 px-4 py-2 rounded-xl bg-black/80 text-xs font-bold animate-pulse" style={{ border: '1px solid color-mix(in srgb, var(--app-accent) 50%, transparent)', color: 'var(--app-accent)' }}>
@@ -1555,8 +1631,8 @@ export const VideoPlayer: React.FC<Props> = ({
       {/* On-Screen Display (OSD) Overlay */}
       <div
         className={`absolute inset-0 flex flex-col justify-between p-10 bg-gradient-to-t from-black/95 via-transparent to-black/85 transition-opacity duration-300 ${
-          showOsd ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
+          showOsd || seekFeedback ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        } ${seekFeedback ? 'z-[45]' : ''}`}
       >
         {/* Top OSD Bar: Title & Quick Track Indicators */}
         <div className="flex items-center justify-between">
@@ -1565,12 +1641,12 @@ export const VideoPlayer: React.FC<Props> = ({
               <span className="w-2 h-2 rounded-full animate-ping" style={{ background: 'var(--app-accent)' }} />
               Reproduzindo
             </span>
-            <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tight mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span>{meta.name}</span>
+            <div className="text-2xl lg:text-3xl font-black text-white tracking-tight mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <MediaTitle item={titleArtwork?.id === meta.id ? { ...meta, logo: meta.logo || titleArtwork.logo } : meta} as="h2" logoHeight={56} />
               {currentEpisode && <span className="text-base lg:text-lg font-semibold tracking-normal text-zinc-300" aria-label={`Temporada ${currentEpisode.season}, episódio ${currentEpisode.episode}`}>
                 T{currentEpisode.season} · E{currentEpisode.episode}
               </span>}
-            </h2>
+            </div>
             <div className="text-xs text-zinc-400 mt-0.5">
               {currentStream.name || 'Stream de Alta Resolução'}
             </div>
@@ -1661,7 +1737,31 @@ export const VideoPlayer: React.FC<Props> = ({
         </div>
 
         {/* Bottom OSD Bar: Timeline & Controller HUD Buttons */}
-        <div ref={playbackControlsRef} className="player-controls-surface liquid-glass-surface flex flex-col gap-4">
+        <div ref={playbackControlsRef} className="player-controls-surface liquid-glass-surface relative flex flex-col gap-4">
+          {/* Skip amount, right above the timeline (stays up while the jump loads) */}
+          {seekFeedback && (
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 flex items-center gap-3 px-5 py-2.5 rounded-2xl app-card-panel backdrop-blur-xl shadow-2xl text-white font-bold text-sm animate-fade-in pointer-events-none whitespace-nowrap">
+              {seekFeedback.type === 'rewind' ? (
+                <Rewind className="w-5 h-5 text-sky-400 animate-pulse" />
+              ) : (
+                <FastForward className="w-5 h-5 animate-pulse" style={{ color: 'var(--app-accent)' }} />
+              )}
+              <span className="font-mono text-base">
+                {seekFeedback.type === 'rewind' ? '-' : '+'}
+                {formatSkip(seekFeedback.cumulative || seekFeedback.seconds)}
+              </span>
+              <span className="text-xs text-zinc-400 font-normal">
+                para {formatTime(currentTime)}
+              </span>
+              {isBuffering && (
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300">
+                  <span className="w-3 h-3 rounded-full border-2 border-white/20 animate-spin" style={{ borderTopColor: 'var(--app-accent)' }} />
+                  Carregando
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Progress Bar */}
           <div className="w-full flex items-center gap-4">
             <span className="text-xs font-mono font-semibold text-zinc-300">
@@ -1723,11 +1823,14 @@ export const VideoPlayer: React.FC<Props> = ({
               {/* Controller Hints */}
               <div className="hidden lg:flex items-center gap-2 text-zinc-300 text-xs">
                 <ControllerButtonBadge button="LT" size="sm" />
-                <span className="font-semibold text-zinc-300">-15s</span>
+                <ControllerButtonBadge button="RT" size="sm" />
+                <span className="font-semibold text-zinc-300">±{SKIP_SECONDS}s</span>
               </div>
               <div className="hidden lg:flex items-center gap-2 text-zinc-300 text-xs">
-                <ControllerButtonBadge button="RT" size="sm" />
-                <span className="font-semibold text-zinc-300">+15s</span>
+                <span className="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-[10px] font-bold text-zinc-200">
+                  ◀ ▶
+                </span>
+                <span className="font-semibold text-zinc-300">±{FINE_SKIP_SECONDS}s</span>
               </div>
               <div
                 onClick={cycleBrightness}

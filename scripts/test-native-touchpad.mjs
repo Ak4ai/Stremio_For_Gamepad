@@ -8,7 +8,7 @@ import { createServer } from 'vite';
 const exports = {};
 vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/services/dualsenseTouchpad.ts', 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS },
-}).outputText, { exports, EventTarget, Event, performance });
+}).outputText, { exports, EventTarget, Event, performance, require: () => ({ getTauriInvoker: () => null }) });
 const server = await createServer({ server: { host: '127.0.0.1', port: 0, open: false } });
 let reader;
 try {

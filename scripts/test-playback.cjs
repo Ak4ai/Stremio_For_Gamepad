@@ -87,6 +87,10 @@ async function scenario({ blocked = false, probe = null } = {}) {
     if (name.includes('streamParser')) return { parseStream: () => ({}) };
     if (name.includes('episodeNavigation')) return episodeNavigation;
     if (name.includes('/settings')) return { SettingsService: settings };
+    if (name.includes('/account')) return { AccountService: { getResumeSeconds: () => 0 } };
+    if (name.includes('/watchProgress')) return { WatchSession: class {
+      remoteResumeSeconds() { return Promise.resolve(0); } tick() {} save() { return Promise.resolve(); }
+    } };
     return {};
   }, { crypto: { randomUUID: () => `session-${++uuid}` },
     Date: { now: () => clock }, setInterval: (cb) => { timers.set(1, cb); return 1; }, clearInterval: (id) => timers.delete(id),

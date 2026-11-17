@@ -6,6 +6,7 @@ const listeners = [];
 const calls = [];
 const events = [];
 let available = true;
+let now = 10000;
 const windowMock = {
   __TAURI_INTERNALS__: { invoke: async (command) => { calls.push(command); return available; } },
   addEventListener: (type, handler, capture) => listeners.push({ type, handler, capture }),
@@ -18,7 +19,7 @@ const windowMock = {
 const service = {};
 vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/services/system.ts', 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS },
-}).outputText, { exports: service, window: windowMock, console, Event });
+}).outputText, { exports: service, window: windowMock, console, Event, Date: { now: () => now } });
 (async () => {
   const dispose = service.installSteamOverlayShortcut();
   assert.equal(listeners.length, 1);
@@ -40,6 +41,7 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/services/system.ts', 
     assert.equal(event.prevented, undefined);
   }
   available = false;
+  now += 2000;
   assert.equal(await service.activateSteamOverlay(), false);
   assert.ok(events.includes('steam-overlay-unavailable'), 'failure is visible instead of opening Big Picture');
   dispose();

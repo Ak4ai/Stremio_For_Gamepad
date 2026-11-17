@@ -116,7 +116,7 @@ Adicione `release/Steam_for_Consoles.exe` como jogo não Steam e inicie pela Bib
 
 A versão atual preserva a identidade do atalho e não inicializa o SDK de teste nem usa o AppID 480 (Spacewar). Executáveis e instaladores antigos continuam com o comportamento da versão em que foram compilados; recompilar com `scripts\build-tauri.bat` atualiza a versão portátil em `release/`.
 
-O WebView2 renderiza em outro processo. Para o overlay, uma superfície Direct3D 12 no processo principal é criada apenas em lançamentos pela Steam. Ela prepara a conexão com 20 quadros ocultos e depois pausa a apresentação até Shift+Tab. Uma captura do aplicativo serve como fundo do overlay, permanecendo congelada enquanto ele está aberto. A reprodução continua na janela principal. Ao fechar o overlay ou falhar a ativação, a superfície é ocultada.
+O WebView2 renderiza em outro processo. Para o overlay, uma superfície Direct3D 12 no processo principal é criada apenas em lançamentos pela Steam. Ela prepara a conexão com 20 quadros ocultos e continua apresentando quadros em uma janela ocultada pelo DWM, mantendo a conexão com a Steam. Uma captura do aplicativo serve como fundo do overlay, permanecendo congelada enquanto ele está aberto. A reprodução continua na janela principal. Ao fechar o overlay ou falhar a ativação, a superfície é ocultada novamente pelo DWM.
 
 Shift+Tab é encaminhado ao processo nativo antes da navegação da busca. Pedidos simultâneos são agrupados para evitar abrir/fechar duas vezes. O retorno do foco bloqueia a repetição imediata do atalho.
 
@@ -125,3 +125,37 @@ Os logs nativos ficam em `%LOCALAPPDATA%/com.stremio.gamepad/logs/`. A linha de 
 `npm run tauri:build` também sincroniza o executável portátil de `release/`. Feche o aplicativo antes de compilar; se a cópia falhar, o build avisa em vez de informar sucesso com o executável antigo. Ao sair, somente o motor iniciado pelo próprio aplicativo é encerrado, permitindo que a Steam libere o atalho para outra execução.
 
 Teste de teclado: `npm run test:steam`. Testes de transição: `cargo test --manifest-path src-tauri/Cargo.toml --lib`. A validação visual do overlay exige iniciar o executável pela Steam.
+
+## DualSense nativo no Windows — versão 0.1.6
+
+O executável inclui um leitor HID em Rust para DualSense e DualSense Edge. Ele entrega os botões, analógicos, gatilhos, posição do touchpad, toque, gesto e clique à interface por IPC do Tauri. Funciona sem iniciar o Vite, sem um servidor Node de controles e sem solicitar permissão WebHID. Reconecta após desconexão e solicita os relatórios completos do Bluetooth para disponibilizar o touchpad. A vibração compatível usa o mesmo transporte.
+
+Para usar o DualSense nativamente pela Steam, desative a Entrada Steam nas propriedades deste atalho. Se preferir ativá-la, a tradução e o layout do controle ficam sob sua configuração na Steam.
+
+O leitor nativo é o único responsável pelo botão PS do DualSense. Ele dá à Steam uma oportunidade de processar a pressão física e usa o acionamento de apoio apenas quando não houve uma transição do painel. Pedidos são serializados, a situação do painel é conferida novamente antes de enviar o atalho e não há repetição automática de um comando de alternância. O aplicativo não altera `shortcuts.vdf` nem os atalhos de outros jogos.
+
+Durante o painel, entradas do aplicativo e gestos de digitação ficam suspensos. Ao retornar, comandos antigos do touchpad são descartados e botões que já estavam pressionados são sincronizados para evitar confirmações involuntárias.
+
+Verificação: `npm run test:dualsense:tauri`, `npm run test:input` e `npm run test:steam`. Os testes Rust validam os formatos USB/Bluetooth e as transições do botão PS. Para conferir um controle físico com o mesmo backend: `cargo run --manifest-path src-tauri/Cargo.toml --release --target x86_64-pc-windows-gnu --features tauri/custom-protocol --example dualsense_probe`.
+
+## Abertura do painel — versão 0.1.7
+
+A janela do painel não é mais fechada quando um sinal momentâneo de captura de teclado ou controle cai. A apresentação é mantida até o gesto de fechamento, e os quadros continuam sendo processados em uma janela DWM-cloaked enquanto o painel está fechado. `BOverlayNeedsPresent` é apenas diagnóstico de renderização, sem determinar visibilidade.
+
+Um auxiliar local do Windows entrega Shift+Tab à janela nativa correta, pois a interceptação de entrada da Steam também atinge as teclas simuladas pelo processo do aplicativo e seus descendentes. Ele é iniciado pelo shell da área de trabalho, sem a injeção da Steam, e usa o Windows PowerShell já instalado. O auxiliar é oculto, reutilizado entre pedidos, aceita exclusivamente esse atalho e verifica que a janela de destino e o primeiro plano pertencem ao aplicativo. A conexão é limitada a `127.0.0.1`, usa uma porta temporária e autenticação com segredo aleatório de 256 bits. O listener fecha depois da conexão; o auxiliar termina quando o aplicativo fecha sua conexão.
+
+Ao fechar por PS ou Shift+Tab, a janela continua renderizando e com foco até a Steam processar o fechamento. O foco do WebView é restaurado uma vez depois dessa confirmação, preservando o teclado e a leitura HID do DualSense para o próximo ciclo. O auxiliar não inicializa o Steamworks nem altera o AppID do atalho.
+
+## Fechamento por controle — versão 0.1.8
+
+O fechamento pelo botão PS aguarda todo o período de 500 ms reservado à Steam, mesmo quando a captura de entrada cai momentaneamente. Depois disso, se a Steam ainda estiver capturando entrada, o aplicativo envia o atalho de fechamento. A confirmação exige 250 ms contínuos sem captura antes de devolver o foco ao WebView.
+
+O círculo pode fechar o painel sem que a janela principal receba foco primeiro. O aplicativo reconhece a soltura do círculo como intenção de sair e confirma uma liberação sustentada da captura de entrada; navegar para trás dentro do painel, mantendo captura ativa, não encerra a apresentação.
+
+Durante a devolução do foco, a interface exibe um indicador animado com “Voltando ao aplicativo…”. A superfície nativa é ocultada pelo DWM sem perder foco nem interromper os quadros enquanto a Steam libera a entrada. O indicador desaparece depois da restauração do foco; se o fechamento falhar, o painel da Steam reaparece para permitir uma nova tentativa.
+
+## Kitsu e logos dos títulos — versão 0.1.9
+
+As imagens de itens da biblioteca são completadas em segundo plano consultando os addons compatíveis com o tipo e prefixo do ID. IDs `kitsu:` não são enviados ao Cinemeta/Metahub como IDs IMDb. Um fallback público do Anime Kitsu recupera metadados quando a coleção de addons está desatualizada; se ele falhar, a API oficial `kitsu.app/api/edge/anime` recupera pôster, fundo e sinopse sem chave de API. A API de imagens não inventa IDs de episódios. O ID e o progresso salvos permanecem intactos, inclusive durante falhas dos provedores.
+
+Itens com progresso e duração desconhecida continuam visíveis. Catálogos do tipo `anime` também são aceitos. No destaque e nos detalhes, o campo `logo` do provedor é usado como título em imagem; para IMDb, o Metahub fornece a imagem. O nome em texto permanece durante o carregamento e quando o logo falha. Testes: `npm run test:metadata`.

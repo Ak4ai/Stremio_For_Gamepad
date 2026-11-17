@@ -13,7 +13,8 @@ export type GamepadAction =
   | 'TRIGGER_LT'
   | 'TRIGGER_RT'
   | 'BUTTON_VIEW'
-  | 'BUTTON_MENU';
+  | 'BUTTON_MENU'
+  | 'BUTTON_GUIDE';
 
 export type ControllerType = 'xbox' | 'playstation' | 'nintendo' | 'steam-deck' | 'keyboard';
 
@@ -29,8 +30,10 @@ export class GamepadManager {
   private static animFrameId: number | null = null;
   private static isRunning = false;
   private static steamOverlayActive = false;
+  private static resyncButtons = false;
 
   public static setSteamOverlayActive(active: boolean) {
+    if (this.steamOverlayActive && !active) this.resyncButtons = true;
     this.steamOverlayActive = active;
     this.navHoldTimers = {};
   }
@@ -43,6 +46,7 @@ export class GamepadManager {
   private static INITIAL_DELAY = 260; // ms
   private static REPEAT_INTERVAL = 110; // ms
   private static DEADZONE = 0.35;
+  private static lastGuidePress = 0;
 
   public static isConnected = false;
   public static controllerName = '';
@@ -318,6 +322,7 @@ export class GamepadManager {
    * Rumble feedback
    */
   public static pulseHaptic(duration = 40, weak = 0.3, strong = 0.2) {
+    if (this.steamOverlayActive) return;
     try {
       const gp = this.getActiveGamepad();
       if (gp && this.isPlayStationGamepad(gp) && typeof pulseNativeDualSense === 'function' && pulseNativeDualSense(duration, weak, strong)) return;
@@ -391,6 +396,10 @@ export class GamepadManager {
       this.navHoldTimers = {};
       this.polledController = identity;
     }
+    if (this.resyncButtons) {
+      this.prevButtons = gp.buttons.map((button, index) => index === 6 || index === 7 ? button.value > 0.65 : button.pressed);
+      this.resyncButtons = false;
+    }
 
     const detectedType = this.detectControllerType(gp.id);
     const isInUse = gp.buttons.some((button) => button.pressed || button.value > 0.25) ||
@@ -435,8 +444,9 @@ export class GamepadManager {
     this.checkButton(gp, 6, 'TRIGGER_LT');
     this.checkButton(gp, 7, 'TRIGGER_RT');
     this.checkButton(gp, 8, 'BUTTON_VIEW');
-    if (this.isPlayStationGamepad(gp)) this.checkButton(gp, 17, 'TOUCHPAD_CLICK');
     this.checkButton(gp, 9, 'BUTTON_MENU');
+    this.checkButton(gp, 16, 'BUTTON_GUIDE');
+    if (this.isPlayStationGamepad(gp)) this.checkButton(gp, 17, 'TOUCHPAD_CLICK');
   }
 
   private static checkButton(gp: Gamepad, index: number, action: GamepadAction) {
@@ -451,6 +461,19 @@ export class GamepadManager {
       : Boolean(btn.pressed);
 
     const wasPressed = this.prevButtons[index] || false;
+
+    if (index === 16) {
+      const now = Date.now();
+      if (isPressed && !wasPressed) {
+        if (now - this.lastGuidePress > 1500) {
+          this.lastGuidePress = now;
+          this.emit(action);
+          this.pulseHaptic(40, 0.3, 0.3);
+        }
+      }
+      this.prevButtons[index] = isPressed;
+      return;
+    }
 
     if (isPressed && !wasPressed) {
       this.emit(action);

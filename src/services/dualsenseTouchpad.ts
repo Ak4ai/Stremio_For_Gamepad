@@ -1,5 +1,7 @@
 // Report offsets exclude the report ID. USB 0x01 and Bluetooth 0x31 layouts:
 // https://github.com/nondebug/dualsense/blob/main/dualsense-explorer.html
+import { getTauriInvoker } from './system';
+
 export interface TouchpadSample {
   active: boolean;
   contactId: number;
@@ -35,7 +37,7 @@ interface HidApi extends EventTarget {
   getDevices(): Promise<HidDevice[]>;
   requestDevice(options: { filters: { vendorId: number; productId: number }[] }): Promise<HidDevice[]>;
 }
-interface HidInputEvent extends Event { reportId: number; data: DataView }
+interface HidInputEvent extends Event { reportId: number; data: DataView; sampleTime?: number }
 const productIds = [0x0ce6, 0x0df2];
 // StrictMode may mount two sessions before the first asynchronous open completes.
 const connections = new WeakMap<HidDevice, { users: number; owned: boolean; ready: Promise<void> }>();
@@ -54,8 +56,18 @@ let sharedGeneration = 0;
 let permissionQueued = false;
 let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 let nativeTransport = false;
+let tauriTransport = false;
+let nativeConnected = false;
+let nativeOverlayActive = false;
 
 export function pulseNativeDualSense(duration: number, weak: number, strong: number): boolean {
+  if (tauriTransport) {
+    if (!nativeConnected) return false;
+    const invoke = getTauriInvoker();
+    if (!invoke) return false;
+    void invoke('dualsense_rumble', { duration: Math.max(1, Math.min(1000, Math.round(duration))), weak, strong }).catch(() => {});
+    return true;
+  }
   if (!nativeTransport) return false;
   const params = new URLSearchParams({ duration: String(Math.max(1, Math.min(1000, duration))), weak: String(weak), strong: String(strong) });
   void fetch(`/__dualsense/rumble?${params}`, { method: 'POST' }).catch(() => {});
@@ -142,6 +154,77 @@ export async function connectDualSenseTouchpad(
   chooseDevice = false,
   onGamepad?: (gamepad: Gamepad | null) => void,
 ): Promise<(() => void) | null> {
+  const invoke = getTauriInvoker();
+  if (invoke) {
+    type NativeBatch = { connected: boolean; nowMs: number; reports: { reportId: number; bytes: number[]; timestampMs: number }[] };
+    // This IPC reader is part of the installed executable, including without
+    // Vite, Node, a localhost server, or a browser HID permission dialog.
+    const first = await invoke('dualsense_poll') as NativeBatch;
+    tauriTransport = true;
+    const receiver = new EventTarget();
+    const nativeHid = {
+      vendorId: 0x054c, productId: 0x0ce6, opened: true,
+      open: async () => {}, close: async () => {}, receiveFeatureReport: async () => new DataView(new ArrayBuffer(0)),
+      addEventListener: receiver.addEventListener.bind(receiver), removeEventListener: receiver.removeEventListener.bind(receiver),
+    } as unknown as HidDevice;
+    const cleanup = await attachDevice(nativeHid, new EventTarget() as HidApi, (event) => {
+      if (!nativeOverlayActive) onTouch(event);
+    }, onDisconnect, (pad) => {
+      if (pad) {
+        pad = { ...pad, id: 'Sony DualSense (Native HID)', buttons: Array.from(pad.buttons) } as Gamepad;
+        // The Rust HID reader owns PS-button edges, including while the webview
+        // is unfocused. Browser delivery must not forward the same press again.
+        (pad.buttons as GamepadButton[])[16] = { pressed: false, touched: false, value: 0 };
+      }
+      onGamepad?.(pad);
+    });
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let wasConnected = false;
+    let ignoreBefore = -Infinity;
+    const receive = (batch: NativeBatch) => {
+      nativeConnected = batch.connected;
+      if (!batch.connected && wasConnected) {
+        onGamepad?.(null);
+        onTouch({ active: false, contactId: 0, x: 0, y: 0, clicked: false, activate: false });
+      }
+      wasConnected = batch.connected;
+      const now = performance.now();
+      for (const packet of batch.reports) {
+        const report = new Event('inputreport') as HidInputEvent;
+        report.reportId = packet.reportId;
+        report.data = new DataView(Uint8Array.from(packet.bytes).buffer);
+        report.sampleTime = now - Math.max(0, batch.nowMs - packet.timestampMs);
+        if (report.sampleTime < ignoreBefore) continue;
+        receiver.dispatchEvent(report);
+      }
+    };
+    const overlayState = (event: Event) => {
+      nativeOverlayActive = (event as CustomEvent<boolean>).detail === true;
+      if (nativeOverlayActive) {
+        receiver.dispatchEvent(new Event('overlay-interrupt'));
+        onTouch({ active: false, contactId: 0, x: 0, y: 0, clicked: false, activate: false });
+      } else { ignoreBefore = performance.now(); }
+    };
+    window.addEventListener('steam-overlay-state', overlayState);
+    const poll = async () => {
+      try {
+        const batch = await invoke('dualsense_poll') as NativeBatch;
+        if (!stopped) receive(batch);
+      } catch (error) {
+        if (!stopped) { nativeConnected = false; onGamepad?.(null); console.debug('Falha na leitura HID nativa:', error); }
+      } finally {
+        if (!stopped) timer = setTimeout(poll, 12);
+      }
+    };
+    receive(first);
+    timer = setTimeout(poll, 12);
+    return () => {
+      stopped = true; clearTimeout(timer); cleanup();
+      window.removeEventListener('steam-overlay-state', overlayState);
+      nativeConnected = false; tauriTransport = false; nativeOverlayActive = false;
+    };
+  }
   if (typeof fetch !== 'undefined' && typeof EventSource !== 'undefined') {
     try {
       const status = await fetch('/__dualsense/status', { signal: AbortSignal.timeout(1000) });
@@ -204,9 +287,12 @@ async function attachDevice(device: HidDevice, hid: HidApi, onTouch: (event: Tou
   let last: TouchpadSample | null = null;
   let requestedFullReport = false;
   let disposed = false;
+  let requireLift = false;
+  const interrupt = () => { gesture = null; last = null; requireLift = true; };
   const input = (event: Event) => {
     if (disposed) return;
     const report = event as HidInputEvent;
+    const sampleTime = report.sampleTime ?? performance.now();
     const gamepad = decodeDualSenseGamepad(report.reportId, report.data);
     if (gamepad) onGamepad?.(gamepad);
     // Only Bluetooth's short report needs this operation; serialize it with open/close.
@@ -218,11 +304,19 @@ async function attachDevice(device: HidDevice, hid: HidApi, onTouch: (event: Tou
     }
     const sample = decodeDualSenseTouchpad(report.reportId, report.data);
     if (!sample) return;
+    if (tauriTransport && nativeOverlayActive) {
+      gesture = null; last = null; pressed = sample.clicked; requireLift = sample.active;
+      return;
+    }
+    if (requireLift) {
+      requireLift = sample.active;
+      if (requireLift) return;
+    }
     const click = sample.clicked && !pressed;
     pressed = sample.clicked;
     if (sample.active) {
       if (!gesture || gesture.id !== sample.contactId) {
-        gesture = { id: sample.contactId, x: sample.x, y: sample.y, started: performance.now(), moved: false, clicked: false };
+        gesture = { id: sample.contactId, x: sample.x, y: sample.y, started: sampleTime, moved: false, clicked: false };
       }
       if (Math.hypot((sample.x - gesture.x) * 1920, (sample.y - gesture.y) * 1080) > 18) gesture.moved = true;
       gesture.clicked ||= click;
@@ -230,7 +324,7 @@ async function attachDevice(device: HidDevice, hid: HidApi, onTouch: (event: Tou
       // Physical clicks are handled by GamepadManager; HID handles position and short taps.
       onTouch({ ...sample, activate: false });
     } else {
-      const elapsed = gesture ? performance.now() - gesture.started : 0;
+      const elapsed = gesture ? sampleTime - gesture.started : 0;
       const tap = gesture && !gesture.moved && !gesture.clicked && elapsed >= 45 && elapsed < 260;
       onTouch({ ...(last || sample), active: false, activate: !!tap });
       gesture = null;
@@ -240,6 +334,7 @@ async function attachDevice(device: HidDevice, hid: HidApi, onTouch: (event: Tou
     if (disposed) return;
     disposed = true;
     device.removeEventListener('inputreport', input);
+    device.removeEventListener('overlay-interrupt', interrupt);
     hid.removeEventListener('disconnect', disconnected);
     onGamepad?.(null);
     sharedConnection.users--;
@@ -256,6 +351,7 @@ async function attachDevice(device: HidDevice, hid: HidApi, onTouch: (event: Tou
     onDisconnect();
   };
   device.addEventListener('inputreport', input);
+  device.addEventListener('overlay-interrupt', interrupt);
   hid.addEventListener('disconnect', disconnected);
   return cleanup;
 }

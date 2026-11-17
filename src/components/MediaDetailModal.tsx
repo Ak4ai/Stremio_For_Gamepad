@@ -6,7 +6,9 @@ import { GamepadManager, type GamepadAction } from '../services/gamepad';
 import { SettingsService } from '../services/settings';
 import { SoundService } from '../services/sound';
 import { ThemeService } from '../services/theme';
+import { activateSteamOverlay } from '../services/system';
 import { ControllerButtonBadge } from './ControllerButtonBadge';
+import { MediaTitle } from './MediaTitle';
 import { parseStream, type ParsedStream } from '../utils/streamParser';
 import { FALLBACK_POSTER } from '../utils/posterFallback';
 import { AccountService } from '../services/account';
@@ -23,6 +25,8 @@ import {
   Tv,
   BookmarkPlus,
   BookmarkCheck,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 interface Props {
@@ -89,9 +93,12 @@ export const MediaDetailModal: React.FC<Props> = ({
   }, []);
   const isPs1 = activeTheme === 'ps1';
 
-  // Check saved episode in localStorage
+  // Last watched episode: the synced Stremio library first (also updated when watching here),
+  // then the episode last chosen on this device.
   const savedKey = `stremio_last_ep_${preview.id}`;
   const initialSaved = useMemo(() => {
+    const synced = AccountService.getLastEpisode(preview.id);
+    if (synced) return synced;
     try {
       const raw = localStorage.getItem(savedKey);
       if (raw) {
@@ -113,7 +120,7 @@ export const MediaDetailModal: React.FC<Props> = ({
   // If series with saved episode -> 'streams' directly!
   // If series without saved episode -> 'seasons'
   const [step, setStep] = useState<DetailStep>(() => {
-    if (preview.type !== 'series') return 'streams';
+    if (preview.type !== 'series' && preview.type !== 'anime') return 'streams';
     if (initialSaved) return 'streams';
     return 'seasons';
   });
@@ -143,7 +150,7 @@ export const MediaDetailModal: React.FC<Props> = ({
         setDetail(data);
 
         // If no saved episode and it's a series:
-        if (!initialSaved && (preview.type === 'series' || (data.videos && data.videos.length > 0))) {
+        if (!initialSaved && (preview.type === 'series' || preview.type === 'anime' || (data.videos && data.videos.length > 0))) {
           const sSet = new Set<number>();
           data.videos?.forEach((v) => {
             if (typeof v.season === 'number' && v.season > 0) sSet.add(v.season);
@@ -168,7 +175,7 @@ export const MediaDetailModal: React.FC<Props> = ({
     };
   }, [preview, initialSaved]);
 
-  const isSeries = preview.type === 'series' || Boolean(detail?.videos && detail.videos.length > 0);
+  const isSeries = preview.type === 'series' || preview.type === 'anime' || Boolean(detail?.videos && detail.videos.length > 0);
 
   // Compute available seasons
   const seasons = useMemo(() => {
@@ -206,10 +213,10 @@ export const MediaDetailModal: React.FC<Props> = ({
     setLoadingStreams(true);
     setRawStreams([]);
 
-    const streamId =
-      preview.type === 'series'
-        ? `${preview.id}:${selectedSeason}:${selectedEpisode}`
-        : preview.id;
+    const streamId = isSeries
+      ? detail?.videos?.find((video) => video.season === selectedSeason && video.episode === selectedEpisode)?.id
+        || `${preview.id}:${selectedSeason}:${selectedEpisode}`
+      : preview.id;
 
     StremioService.getStreams(preview.type, streamId, (partialList) => {
       if (!isMounted) return;
@@ -232,18 +239,50 @@ export const MediaDetailModal: React.FC<Props> = ({
     return () => {
       isMounted = false;
     };
-  }, [preview, selectedSeason, selectedEpisode, step]);
+  }, [preview, selectedSeason, selectedEpisode, step, detail?.videos, isSeries]);
 
   // Parse all loaded streams
   const parsedAllStreams: ParsedStream[] = useMemo(() => {
     return rawStreams.map((s) => parseStream(s));
   }, [rawStreams]);
 
-  // Visible streams filtered by PT-BR when active
-  const visibleStreams: ParsedStream[] = useMemo(() => {
-    if (!isPtBrOnly) return parsedAllStreams;
-    return parsedAllStreams.filter((s) => s.isPtBr);
+  // Addon filter (◀ ▶), like the official app: "Todas" first, then each addon in installed order.
+  // Counts follow the PT-BR filter so each option shows what it would list.
+  const [addonFilter, setAddonFilter] = useState<string>('all');
+  const addonFilters = useMemo(() => {
+    const byKey = new Map<string, { key: string; name: string; order: number; count: number }>();
+    let total = 0;
+    for (const s of parsedAllStreams) {
+      const matches = !isPtBrOnly || s.isPtBr;
+      if (matches) total += 1;
+      const origin = s.stream.origin;
+      if (!origin) continue;
+      const entry = byKey.get(origin.key) ?? { ...origin, count: 0 };
+      if (matches) entry.count += 1;
+      byKey.set(origin.key, entry);
+    }
+    const addons = [...byKey.values()].sort((a, b) => a.order - b.order);
+    return [{ key: 'all', name: 'Todas', order: -2, count: total }, ...addons];
   }, [parsedAllStreams, isPtBrOnly]);
+  // A filter for an addon that has no streams for this title falls back to "Todas".
+  const activeAddon = addonFilters.some((f) => f.key === addonFilter) ? addonFilter : 'all';
+  const activeAddonIndex = addonFilters.findIndex((f) => f.key === activeAddon);
+
+  const shiftAddonFilter = (dir: -1 | 1) => {
+    const next = activeAddonIndex + dir;
+    if (next < 0 || next >= addonFilters.length) return;
+    setAddonFilter(addonFilters[next].key);
+    setFocusedIndex(0);
+  };
+  const addonFilterRef = useRef(shiftAddonFilter);
+  addonFilterRef.current = shiftAddonFilter;
+
+  // Visible streams: addon filter, then PT-BR when active
+  const visibleStreams: ParsedStream[] = useMemo(() => {
+    return parsedAllStreams.filter(
+      (s) => (activeAddon === 'all' || s.stream.origin?.key === activeAddon) && (!isPtBrOnly || s.isPtBr)
+    );
+  }, [parsedAllStreams, isPtBrOnly, activeAddon]);
 
   const ptBrCount = useMemo(() => {
     return parsedAllStreams.filter((s) => s.isPtBr).length;
@@ -383,6 +422,9 @@ export const MediaDetailModal: React.FC<Props> = ({
       } = stateRef.current;
 
       switch (action) {
+        case 'BUTTON_GUIDE':
+          void activateSteamOverlay();
+          break;
         case 'BUTTON_VIEW':
           void stateRef.current.toggleLibrary();
           break;
@@ -463,6 +505,11 @@ export const MediaDetailModal: React.FC<Props> = ({
             updateSelectedEpisode(nextEp);
             doSaveLastEp(curSeason, nextEp);
           }
+          break;
+
+        case 'NAV_LEFT':
+        case 'NAV_RIGHT':
+          if (curStep === 'streams') addonFilterRef.current(action === 'NAV_LEFT' ? -1 : 1);
           break;
 
         case 'NAV_UP': {
@@ -776,7 +823,7 @@ export const MediaDetailModal: React.FC<Props> = ({
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
               <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-[11px] font-bold text-white">
                 <span className="px-2 py-0.5 rounded bg-black/60 border border-white/20 uppercase">
-                  {preview.type === 'series' ? 'Série' : 'Filme'}
+                  {isSeries ? 'Série' : 'Filme'}
                 </span>
                 {preview.imdbRating && (
                   <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/80 text-black font-black">
@@ -817,9 +864,7 @@ export const MediaDetailModal: React.FC<Props> = ({
             </div>
 
             {/* Title */}
-            <h1 className="text-3xl lg:text-4xl font-black text-white tracking-tight mb-3">
-              {preview.name}
-            </h1>
+            <MediaTitle item={detail || preview} className="text-3xl lg:text-4xl font-black text-white tracking-tight mb-3" />
 
             {/* Step/Episode Context Banner */}
             {isSeries && (
@@ -899,7 +944,7 @@ export const MediaDetailModal: React.FC<Props> = ({
 
               <div
                 ref={scrollContainerRef}
-                className="flex-1 overflow-y-auto px-3 py-2 space-y-3 no-scrollbar"
+                className="flex-1 overflow-y-auto px-3 py-4 scroll-py-4 space-y-3 no-scrollbar"
               >
                 {seasons.map((seasonNum, idx) => {
                   const isFocused = focusedIndex === idx;
@@ -1017,7 +1062,7 @@ export const MediaDetailModal: React.FC<Props> = ({
 
               <div
                 ref={scrollContainerRef}
-                className="flex-1 overflow-y-auto px-3 py-2 space-y-3 no-scrollbar"
+                className="flex-1 overflow-y-auto px-3 py-4 scroll-py-4 space-y-3 no-scrollbar"
               >
                 {episodesInSeason.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-64 text-zinc-400 gap-3">
@@ -1122,9 +1167,41 @@ export const MediaDetailModal: React.FC<Props> = ({
                       Fontes Disponíveis ({visibleStreams.length})
                     </h2>
                   </div>
-                  <span className="text-xs text-zinc-400 font-semibold hidden md:inline">
-                    Selecione com D-Pad e confirme com (A)
-                  </span>
+                  {/* Addon filter selector (◀ ▶ on the D-Pad) */}
+                  <div className="flex items-center gap-1 min-w-0" aria-label="Filtrar fontes por addon">
+                    <button
+                      type="button"
+                      onClick={() => shiftAddonFilter(-1)}
+                      disabled={activeAddonIndex <= 0}
+                      className="p-1 rounded-lg text-zinc-300 hover:text-white disabled:opacity-25 cursor-pointer disabled:cursor-default"
+                      aria-label="Addon anterior"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <div
+                      key={activeAddon}
+                      style={{
+                        background: 'color-mix(in srgb, var(--app-accent) 18%, transparent)',
+                        borderColor: 'color-mix(in srgb, var(--app-accent) 55%, transparent)',
+                      }}
+                      className="flex items-center gap-2 min-w-0 max-w-[260px] px-3 py-1 rounded-full border text-xs animate-fade-in"
+                    >
+                      <span className="font-bold text-white truncate">{addonFilters[activeAddonIndex]?.name}</span>
+                      <span className="font-mono text-zinc-300">{addonFilters[activeAddonIndex]?.count ?? 0}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => shiftAddonFilter(1)}
+                      disabled={activeAddonIndex >= addonFilters.length - 1}
+                      className="p-1 rounded-lg text-zinc-300 hover:text-white disabled:opacity-25 cursor-pointer disabled:cursor-default"
+                      aria-label="Próximo addon"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                    <span className="text-[11px] font-mono text-zinc-500 ml-0.5">
+                      {activeAddonIndex + 1}/{addonFilters.length}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Filter banner */}
@@ -1157,7 +1234,7 @@ export const MediaDetailModal: React.FC<Props> = ({
               {/* Scrollable Stream Sources List with Gutter Padding to Prevent Focus Clipping */}
               <div
                 ref={scrollContainerRef}
-                className="flex-1 overflow-y-auto px-3 py-2 space-y-3.5 no-scrollbar"
+                className="flex-1 overflow-y-auto px-3 py-4 scroll-py-4 space-y-3.5 no-scrollbar"
               >
                 {loadingStreams ? (
                   <div className="flex flex-col items-center justify-center h-64 text-zinc-400 gap-3">
@@ -1423,6 +1500,12 @@ export const MediaDetailModal: React.FC<Props> = ({
                 </span>
                 <span>Navegar Fontes</span>
               </div>
+              <div className="hidden md:flex items-center gap-2 text-zinc-400 text-[11px]">
+                <span className="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 font-bold">
+                  D-Pad ◀ ▶
+                </span>
+                <span>Filtrar por Addon</span>
+              </div>
             </>
           )}
 
@@ -1433,17 +1516,7 @@ export const MediaDetailModal: React.FC<Props> = ({
               </span>
               <span>Rolar Detalhes</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 font-bold text-zinc-200">
-                LS ↑↓
-              </span>
-              <span>Rolar Lista</span>
-            </div>
           </div>
-        </div>
-
-        <div className="flex items-center gap-3 text-zinc-500 font-bold text-[11px]">
-          <span>STREMIO 10-FOOT BLADE</span>
         </div>
       </footer>
     </div>

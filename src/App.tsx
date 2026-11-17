@@ -6,7 +6,7 @@ import { ThemeService } from './services/theme';
 import type { ThemeId } from './types/theme';
 import { XboxHeader, TABS, type NavTab } from './components/XboxHeader';
 import { XboxFooterHints, type HintAction } from './components/XboxFooterHints';
-import { BookmarkCheck, BookmarkMinus } from 'lucide-react';
+import { BookmarkCheck, BookmarkMinus, LoaderCircle } from 'lucide-react';
 import { HeroSpotlight } from './components/HeroSpotlight';
 import { MediaCarousel } from './components/MediaCarousel';
 import { MediaDetailModal } from './components/MediaDetailModal';
@@ -14,13 +14,20 @@ import { VideoPlayer } from './components/VideoPlayer';
 import { SearchModal } from './components/SearchModal';
 import { LibraryView } from './components/LibraryView';
 import { LoginModal } from './components/LoginModal';
+import { LocalAddonsModal } from './components/LocalAddonsModal';
+import { AddonOptionsModal } from './components/AddonOptionsModal';
 import { SettingsView } from './components/SettingsView';
 import { SystemMenuModal } from './components/SystemMenuModal';
 import { AccountService } from './services/account';
+import { LocalAddonService } from './services/localAddons';
 import { SettingsService, applyFullscreen } from './services/settings';
 import { SoundService } from './services/sound';
 import { subscribeDualSenseTouchpad } from './services/dualsenseTouchpad';
+import { activateSteamOverlay, openUrl } from './services/system';
 import type { StremioAddon } from './types/account';
+import { imdbArtwork } from './services/metadata';
+import { progressPercent, remainingMinutes } from './utils/libraryProgress';
+import { mediaLogoUrl, preloadLogoImage } from './services/logoImages';
 
 interface CatalogRow {
   id: string;
@@ -68,7 +75,10 @@ export default function App() {
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isLocalAddonsOpen, setIsLocalAddonsOpen] = useState(false);
+  const [optionsAddon, setOptionsAddon] = useState<StremioAddon | null>(null);
   const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false);
+  const [isReturningFromSteam, setIsReturningFromSteam] = useState(false);
   const [currentUser, setCurrentUser] = useState(AccountService.getUser());
   const [userAddons, setUserAddons] = useState<StremioAddon[]>(AccountService.getUserAddons());
 
@@ -111,6 +121,8 @@ export default function App() {
     playingStream,
     isSearchOpen,
     isLoginModalOpen,
+    isLocalAddonsOpen,
+    optionsAddon,
     isSystemMenuOpen,
     activeRowIndex,
     activeColIndex,
@@ -125,6 +137,8 @@ export default function App() {
     playingStream,
     isSearchOpen,
     isLoginModalOpen,
+    isLocalAddonsOpen,
+    optionsAddon,
     isSystemMenuOpen,
     activeRowIndex,
     activeColIndex,
@@ -167,6 +181,10 @@ export default function App() {
       GamepadManager.setSteamOverlayActive((event as CustomEvent<boolean>).detail === true);
     };
     window.addEventListener('steam-overlay-state', handleOverlayState);
+    const handleReturningState = (event: Event) => {
+      setIsReturningFromSteam((event as CustomEvent<boolean>).detail === true);
+    };
+    window.addEventListener('steam-overlay-returning', handleReturningState);
 
     GamepadManager.init();
     const stopDualSense = subscribeDualSenseTouchpad(() => {}, (pad) => GamepadManager.setHidGamepad(pad, true));
@@ -195,6 +213,7 @@ export default function App() {
       window.removeEventListener('keydown', handleGlobalKeyDown);
       window.removeEventListener('steam-overlay-unavailable', handleOverlayUnavailable);
       window.removeEventListener('steam-overlay-state', handleOverlayState);
+      window.removeEventListener('steam-overlay-returning', handleReturningState);
       GamepadManager.setSteamOverlayActive(false);
       stopDualSense();
       unsubController();
@@ -213,6 +232,36 @@ export default function App() {
     setForcedControllerType(type);
   };
 
+  const buildContinueWatchingRow = (): CatalogRow | null => {
+    const items = AccountService.getWatchingItems().map((item): StremioMetaPreview => ({
+      id: item._id,
+      name: item.name,
+      type: item.type,
+      poster: item.poster || imdbArtwork('poster', item._id),
+      background: item.background || imdbArtwork('background', item._id),
+      logo: item.logo,
+      description: item.description,
+      year: item.year,
+      imdbRating: item.imdbRating,
+      genres: item.genres,
+      progress: progressPercent(item.state),
+      remainingMinutes: remainingMinutes(item.state),
+      state: item.state,
+    }));
+    return items.length > 0 ? { id: 'continue-watching', title: '▶ Continuar Assistindo', items } : null;
+  };
+
+  // Progress saved while watching updates the Continue Watching row without reloading the home.
+  useEffect(() => {
+    return AccountService.subscribeLibrary(() => {
+      const row = buildContinueWatchingRow();
+      setRows((prev) => {
+        const rest = prev.filter((r) => r.id !== 'continue-watching');
+        return row ? [row, ...rest] : rest;
+      });
+    });
+  }, []);
+
   const loadCatalogs = async (forceRefresh: boolean = false) => {
     if (isCatalogLoadingRef.current) return;
     isCatalogLoadingRef.current = true;
@@ -225,44 +274,9 @@ export default function App() {
       // 1. Fetch User Library (from cloud datastore if logged in, or cached)
       const libraryItems = await AccountService.getLibrary(forceRefresh);
 
-      // 1a. Continue Watching Row (items with progress)
-      const watchingItems = libraryItems
-        .filter((item) => {
-          const offset = item.state?.timeOffset || 0;
-          const dur = item.state?.duration || 1;
-          return offset > 0 && offset < dur * 0.95;
-        })
-        .map((item): StremioMetaPreview => {
-          const progress =
-            item.state?.duration && item.state.timeOffset
-              ? Math.min(100, Math.floor((item.state.timeOffset / item.state.duration) * 100))
-              : 0;
-          const remainingMinutes =
-            item.state?.duration && item.state.timeOffset
-              ? Math.max(1, Math.round((item.state.duration - item.state.timeOffset) / 60))
-              : undefined;
-          return {
-            id: item._id,
-            name: item.name,
-            type: item.type,
-            poster: item.poster || `https://images.metahub.space/poster/medium/${item._id}/img`,
-            background: item.background || `https://images.metahub.space/background/medium/${item._id}/img`,
-            year: item.year,
-            imdbRating: item.imdbRating,
-            genres: item.genres,
-            progress,
-            remainingMinutes,
-            state: item.state,
-          };
-        });
-
-      if (watchingItems.length > 0) {
-        initialRows.push({
-          id: 'continue-watching',
-          title: '▶ Continuar Assistindo',
-          items: watchingItems,
-        });
-      }
+      // 1a. Continue Watching Row (items with progress, also titles watched outside the library)
+      const watchingRow = buildContinueWatchingRow();
+      if (watchingRow) initialRows.push(watchingRow);
 
       // 1b. My Library Row (Apenas os Não Vistos)
       const unwatchedLibraryMetas = libraryItems
@@ -275,8 +289,10 @@ export default function App() {
           id: item._id,
           name: item.name,
           type: item.type,
-          poster: item.poster || `https://images.metahub.space/poster/medium/${item._id}/img`,
-          background: item.background || `https://images.metahub.space/background/medium/${item._id}/img`,
+          poster: item.poster || imdbArtwork('poster', item._id),
+          background: item.background || imdbArtwork('background', item._id),
+          logo: item.logo,
+          description: item.description,
           year: item.year,
           imdbRating: item.imdbRating,
           genres: item.genres,
@@ -310,19 +326,37 @@ export default function App() {
       // Render initial rows immediately without blocking!
       setRows(initialRows);
       setLoading(false);
+      // Fill missing third-party artwork after the catalog is already usable.
+      const libraryUserId = AccountService.getUser()?._id;
+      void AccountService.enrichLibrary(libraryItems).then((enriched) => {
+        if (AccountService.getUser()?._id !== libraryUserId) return;
+        const byId = new Map(enriched.map((item) => [item._id, item]));
+        setRows((current) => current.map((row) => {
+          if (row.id !== 'continue-watching' && row.id !== 'my-library-row') return row;
+          return { ...row, items: row.items.map((card) => {
+            const item = byId.get(card.id);
+            return item ? { ...card, name: item.name, poster: item.poster,
+              background: item.background, logo: item.logo, description: item.description,
+              year: item.year, imdbRating: item.imdbRating, genres: item.genres } : card;
+          }) };
+        }));
+      });
 
       // 3. In background: Fetch user-installed addons catalogs (ONLY movie / series)
-      let addons = isLogged ? AccountService.getUserAddons() : [];
-      if (addons.length === 0) {
-        addons = await AccountService.syncAddons();
+      let accountAddons = isLogged ? AccountService.getAccountAddons() : [];
+      if (accountAddons.length === 0) {
+        accountAddons = await AccountService.syncAddons();
       }
+      // Local extensions work with or without a Stremio account.
+      await LocalAddonService.refresh();
+      const addons = [...accountAddons, ...LocalAddonService.getAddons()];
       setUserAddons(addons);
 
       for (const addon of addons) {
         const catalogs = addon.manifest?.catalogs || [];
         for (const cat of catalogs) {
           // Strictly only movie/series. Ignore 'other' and catalogs requiring search terms
-          if (cat.type !== 'movie' && cat.type !== 'series') continue;
+          if (cat.type !== 'movie' && cat.type !== 'series' && cat.type !== 'anime') continue;
           if (cat.extraRequired && cat.extraRequired.length > 0) continue;
 
           // Asynchronous non-blocking fetch
@@ -374,7 +408,7 @@ export default function App() {
       return rows
         .map((r) => {
           if (r.id === 'continue-watching') {
-            const seriesItems = r.items.filter((item) => item.type === 'series');
+            const seriesItems = r.items.filter((item) => item.type === 'series' || item.type === 'anime');
             if (seriesItems.length === 0) return null;
             return { ...r, items: seriesItems };
           }
@@ -401,6 +435,16 @@ export default function App() {
     return r.items[activeColIndex] || r.items[0];
   }, [visibleRows, activeRowIndex, activeColIndex]);
 
+  useEffect(() => {
+    const row = visibleRows[activeRowIndex] || visibleRows[0];
+    if (!row) return;
+    const index = Math.min(activeColIndex, row.items.length - 1);
+    [0, 1, -1, 2, -2].forEach((offset) => {
+      const item = row.items[index + offset];
+      if (item) preloadLogoImage(mediaLogoUrl(item), offset === 0);
+    });
+  }, [visibleRows, activeRowIndex, activeColIndex]);
+
   // Central Gamepad Action Dispatcher
   useEffect(() => {
     const handleGamepadAction = (action: GamepadAction) => {
@@ -410,10 +454,18 @@ export default function App() {
         playingStream: curPlayer,
         isSearchOpen: curSearch,
         isLoginModalOpen: curLogin,
+        isLocalAddonsOpen: curLocalAddons,
+        optionsAddon: curAddonOptions,
         isSystemMenuOpen: curSystemMenu,
         activeRowIndex: rIdx,
         activeColIndex: cIdx,
       } = stateRef.current;
+
+      // 0. Universal Guide Button (PS / Xbox / Home) -> Steam Overlay
+      if (action === 'BUTTON_GUIDE') {
+        void activateSteamOverlay();
+        return;
+      }
 
       // 1. If Video Player is active, player handles its own actions
       if (curPlayer) return;
@@ -425,6 +477,9 @@ export default function App() {
         }
         return;
       }
+
+      // 2a'. Local extensions modal handles its own actions (including B)
+      if (curLocalAddons || curAddonOptions) return;
 
       // 2a. System Menu Navigation (handled directly by SystemMenuModal)
       if (curSystemMenu) {
@@ -585,7 +640,11 @@ export default function App() {
     if (activeTab === 'settings') {
       return [
         { button: 'A', label: 'Selecionar' },
+        { button: 'DPAD', label: 'Mudar Opção' },
+        { button: 'B', label: 'Voltar' },
         { button: 'MENU', label: 'Menu' },
+        { button: 'LT', label: '' },
+        { button: 'RT', label: 'Seção' },
         { button: 'LB', label: '' },
         { button: 'RB', label: 'Trocar Aba' },
       ];
@@ -698,6 +757,8 @@ export default function App() {
               !selectedMeta &&
               !isSearchOpen &&
               !isLoginModalOpen &&
+              !isLocalAddonsOpen &&
+              !optionsAddon &&
               !playingStream
             }
             currentUser={currentUser}
@@ -706,6 +767,8 @@ export default function App() {
             serverStatus={serverStatus}
             controllerName={controllerName}
             isGamepadActive={isGamepadActive}
+            onManageLocalAddons={() => setIsLocalAddonsOpen(true)}
+            onOpenAddonOptions={setOptionsAddon}
             onThemeChange={handleThemeChange}
             onControllerTypeChange={handleControllerTypeChange}
             onOpenLogin={() => setIsLoginModalOpen(true)}
@@ -720,8 +783,9 @@ export default function App() {
             }}
             userAddons={userAddons}
             onSyncAddons={async () => {
-              const a = await AccountService.syncAddons();
-              setUserAddons(a);
+              await AccountService.syncAddons();
+              await LocalAddonService.refresh();
+              setUserAddons(AccountService.getUserAddons());
               loadCatalogs(true);
             }}
             onCheckServer={async () => {
@@ -754,6 +818,11 @@ export default function App() {
             setSelectedMeta(null);
           }}
           onPlayStream={(stream, meta, all, streamId) => {
+            if (stream.externalUrl && !stream.url && !stream.infoHash) {
+              void openUrl(stream.externalUrl);
+              showToast('Abrindo no navegador…', 'add');
+              return;
+            }
             setPlayingStream(stream);
             setPlayingMeta(meta);
             if (all) setPlayingStreams(all);
@@ -812,6 +881,35 @@ export default function App() {
         />
       )}
 
+      {/* Local extensions (install from folder, zip or repository link) */}
+      {isLocalAddonsOpen && (
+        <LocalAddonsModal
+          onClose={() => {
+            SoundService.playBack();
+            setIsLocalAddonsOpen(false);
+          }}
+          onChanged={() => {
+            setUserAddons(AccountService.getUserAddons());
+            loadCatalogs(true);
+          }}
+        />
+      )}
+
+      {/* Addon options: configure / uninstall (account addons and local extensions) */}
+      {optionsAddon && (
+        <AddonOptionsModal
+          addon={optionsAddon}
+          onClose={() => {
+            SoundService.playBack();
+            setOptionsAddon(null);
+          }}
+          onChanged={() => {
+            setUserAddons(AccountService.getUserAddons());
+            loadCatalogs(true);
+          }}
+        />
+      )}
+
       {/* System Menu Modal (Start / Menu) */}
       <SystemMenuModal
         isOpen={isSystemMenuOpen}
@@ -821,6 +919,14 @@ export default function App() {
       />
 
       {/* Floating HUD Toast Notification */}
+      {isReturningFromSteam && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-black/70 backdrop-blur-sm" role="status" aria-live="polite" aria-busy="true">
+          <div className="flex items-center gap-4 rounded-2xl border border-white/15 bg-zinc-900/95 px-8 py-6 text-white shadow-2xl">
+            <LoaderCircle className="h-8 w-8 animate-spin text-violet-400" aria-hidden="true" />
+            <span className="text-xl font-semibold">Voltando ao aplicativo…</span>
+          </div>
+        </div>
+      )}
       {toast && (
         <div
           className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-3.5 rounded-2xl bg-zinc-900/95 backdrop-blur-xl shadow-2xl text-white font-semibold text-sm animate-fade-in pointer-events-none w-max max-w-[calc(100vw-2rem)]"

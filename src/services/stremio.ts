@@ -7,6 +7,8 @@ import type {
   ServerStatus,
 } from '../types/stremio';
 import { AccountService } from './account';
+import { MetadataService } from './metadata';
+import { LocalAddonService } from './localAddons';
 
 const STREAMING_SERVER_URL = 'http://127.0.0.1:11470';
 const CINEMETA_URL = 'https://v3-cinemeta.strem.io';
@@ -161,7 +163,7 @@ export class StremioService {
     skip: number = 0
   ): Promise<StremioMetaPreview[]> {
     // Strictly ignore non-media catalogs (such as 'other', internal scrapers, etc.)
-    if (type !== 'movie' && type !== 'series') {
+    if (type !== 'movie' && type !== 'series' && type !== 'anime') {
       return [];
     }
 
@@ -237,6 +239,7 @@ export class StremioService {
         imdbRating: m.imdbRating,
         genres: m.genres,
         description: m.description,
+        logo: m.logo,
       }));
 
       if (items.length > 0) {
@@ -349,15 +352,7 @@ export class StremioService {
    * Fetch full details for a movie or series
    */
   public static async getMeta(type: string, id: string): Promise<StremioMetaDetail | null> {
-    try {
-      const res = await fetch(`${CINEMETA_URL}/meta/${type}/${id}.json`);
-      if (!res.ok) throw new Error(`Failed to fetch meta: ${res.status}`);
-      const data = await res.json();
-      return data.meta || null;
-    } catch (err) {
-      console.warn('Error fetching meta:', err);
-      return null;
-    }
+    return MetadataService.getMeta(type, id, AccountService.getUserAddons());
   }
 
   /**
@@ -473,19 +468,14 @@ export class StremioService {
     }
 
     const allStreams: StremioStream[] = [];
-    const seen = new Set<string>();
 
+    // Like the official Stremio UI: no cross-addon dedupe, every source is listed.
     const addStreams = (incoming: StremioStream[]) => {
-      let added = false;
-      for (const s of incoming) {
-        const key = s.infoHash ? `${s.infoHash}-${s.fileIdx ?? 0}` : s.url || s.title || '';
-        if (key && !seen.has(key)) {
-          seen.add(key);
-          allStreams.push(s);
-          added = true;
-        }
-      }
-      if (added && onProgress) {
+      if (incoming.length === 0) return;
+      allStreams.push(...incoming);
+      // Group by installed addon order, whatever answered first (stable sort keeps each addon's own order).
+      allStreams.sort((a, b) => (a.origin?.order ?? 0) - (b.origin?.order ?? 0));
+      if (onProgress) {
         onProgress([...allStreams]);
       }
     };
@@ -542,21 +532,28 @@ export class StremioService {
 
     const streamTasks: Promise<void>[] = [];
 
-    // 1. Primary fast provider: Torrentio (7500ms timeout)
-    const torrentioTask = fetchJsonTimeout(`${TORRENTIO_URL}/stream/${type}/${id}.json`, 7500)
-      .then((data) => {
-        if (data && Array.isArray(data.streams)) {
-          addStreams(data.streams);
-        }
-      })
-      .catch(() => {});
-    streamTasks.push(torrentioTask);
+    // Local extensions may still be starting; cached manifests make this cheap afterwards.
+    await LocalAddonService.refresh(4000);
+    const userAddons = AccountService.getUserAddons();
+    const hasUserTorrentio = userAddons.some((a) => a.transportUrl?.includes('torrentio.strem.fun'));
 
-    // 2. Query user installed addons with 'stream' resource (5000ms timeout)
+    // 1. Default Torrentio only as a fallback when the user has none installed
+    if (!hasUserTorrentio) {
+      const torrentioTask = fetchJsonTimeout(`${TORRENTIO_URL}/stream/${type}/${id}.json`, 7500)
+        .then((data) => {
+          if (data && Array.isArray(data.streams)) {
+            const origin = { key: TORRENTIO_URL, name: 'Torrentio', order: -1 };
+            addStreams(data.streams.map((s: StremioStream) => ({ ...s, origin })));
+          }
+        })
+        .catch(() => {});
+      streamTasks.push(torrentioTask);
+    }
+
+    // 2. Query every user installed addon with 'stream' resource (including their configured Torrentio)
     try {
-      const userAddons = AccountService.getUserAddons();
-      for (const addon of userAddons) {
-        if (!addon.transportUrl || addon.transportUrl.includes('torrentio.strem.fun')) continue;
+      for (const [order, addon] of userAddons.entries()) {
+        if (!addon.transportUrl) continue;
         const resList = addon.manifest?.resources || [];
         const canStream = resList.some((r: any) =>
           r === 'stream' || (typeof r === 'object' && r.name === 'stream')
@@ -565,17 +562,26 @@ export class StremioService {
         if (canStream) {
           const baseUrl = addon.transportUrl.replace('/manifest.json', '');
           const endpoint = `${baseUrl}/stream/${type}/${id}.json`;
-          const addonTask = fetchJsonTimeout(endpoint, 5000)
+          const addonTask = fetchJsonTimeout(endpoint, 12000)
             .then((data) => {
               if (data && Array.isArray(data.streams)) {
+                const addonName = addon.manifest.name;
+                const origin = { key: addon.transportUrl, name: addonName, order };
                 const formatted = data.streams.map((s: StremioStream) => ({
                   ...s,
-                  name: s.name ? `${addon.manifest.name}\n${s.name}` : addon.manifest.name,
+                  origin,
+                  name: !s.name
+                    ? addonName
+                    : s.name.toLowerCase().startsWith(addonName.toLowerCase())
+                      ? s.name
+                      : `${addonName}\n${s.name}`,
                 }));
                 addStreams(formatted);
+              } else {
+                console.warn(`[streams] ${addon.manifest.name}: no streams / failed`, endpoint);
               }
             })
-            .catch(() => {});
+            .catch((e) => console.warn(`[streams] ${addon.manifest.name} error`, e));
           streamTasks.push(addonTask);
         }
       }

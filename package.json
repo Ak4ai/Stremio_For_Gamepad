@@ -1,7 +1,7 @@
 {
   "name": "steam-for-consoles",
   "private": true,
-  "version": "0.1.5",
+  "version": "0.1.10",
   "type": "module",
   "scripts": {
     "start": "node scripts/launcher.cjs",
@@ -10,6 +10,8 @@
     "lint": "oxlint",
     "test:playback": "node scripts/test-playback.cjs",
     "test:streams": "node scripts/test-stream-parser.cjs",
+    "test:metadata": "node scripts/test-metadata.cjs",
+    "test:logos": "node scripts/test-logo-images.cjs",
     "test:glass": "node scripts/test-studio-glass.cjs",
     "generate:steam-deck": "node scripts/generate-steam-deck-prompts.cjs",
     "test:input": "node scripts/test-input.cjs",
@@ -18,7 +20,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:build": "cmd /c scripts\\build-tauri.bat",
-    "test:steam": "node scripts/test-steam-overlay.cjs"
+    "test:steam": "node scripts/test-steam-overlay.cjs",
+    "test:dualsense:tauri": "node scripts/test-dualsense-tauri.cjs"
   },
   "dependencies": {
     "hls.js": "^1.7.3",

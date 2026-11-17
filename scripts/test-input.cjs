@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
-function load(file, requireMock = () => ({}), globals = {}) {
+function load(file, requireMock = (name) => name.endsWith('/system') ? { getTauriInvoker: () => null } : {}, globals = {}) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
@@ -220,6 +220,14 @@ pad.buttons[17] = { pressed: true, value: 1 }; manager.poll(2);
 assert.equal(manager.activeControllerType, 'playstation');
 assert.equal(actions.pop(), 'TOUCHPAD_CLICK');
 pad.buttons[17] = { pressed: false, value: 0 }; manager.poll(3);
+manager.setSteamOverlayActive(true);
+pad.buttons[0] = { pressed: true, value: 1 }; manager.poll(3.1);
+manager.handleKeyboard(key('Enter'));
+assert.equal(actions.length, 0, 'Steam owns input while its panel is active');
+manager.setSteamOverlayActive(false);
+manager.poll(3.2);
+assert.equal(actions.length, 0, 'a confirmation held in Steam cannot select a background card on return');
+pad.buttons[0] = { pressed: false, value: 0 }; manager.poll(3.3);
 const staleHid = touch.decodeDualSenseGamepad(1, report().data);
 manager.setHidGamepad(staleHid);
 pad.buttons[0] = { pressed: true, value: 1 }; manager.poll(4);

@@ -1,5 +1,8 @@
-import type { StremioUser, StremioLibraryItem, StremioAddon } from '../types/account';
+import type { StremioUser, StremioLibraryItem, StremioAddon, RawLibraryItem } from '../types/account';
 import type { StremioMetaPreview } from '../types/stremio';
+import { MetadataService } from './metadata';
+import { LocalAddonService } from './localAddons';
+import { isContinueWatching, lastEpisodeOf, resumeSecondsFor } from '../utils/libraryProgress';
 
 const STREMIO_API_URL = 'https://api.strem.io/api';
 const USER_STORAGE_KEY = 'stremio_deck_user';
@@ -8,6 +11,10 @@ const ADDONS_CACHE_KEY = 'stremio_deck_user_addons';
 const LAST_SYNC_KEY = 'stremio_deck_last_sync';
 
 type AccountChangeListener = (user: StremioUser | null) => void;
+type LibraryChangeListener = () => void;
+
+/** When a screen asks for the library, re-read the cloud copy if it is older than this. */
+const LIBRARY_MAX_AGE_MS = 2 * 60 * 1000;
 
 export class AccountService {
   private static currentUser: StremioUser | null = null;
@@ -15,6 +22,7 @@ export class AccountService {
   private static userAddons: StremioAddon[] = [];
   private static lastSyncTime: number = 0;
   private static listeners: Set<AccountChangeListener> = new Set();
+  private static libraryListeners: Set<LibraryChangeListener> = new Set();
   private static removedLocalIds: Set<string> = new Set();
   private static addedLocalItems: Map<string, StremioLibraryItem> = new Map();
 
@@ -116,23 +124,9 @@ export class AccountService {
 
       if (user?.authKey) {
         try {
-          await fetch(`${STREMIO_API_URL}/datastorePut`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              authKey: user.authKey,
-              collection: 'libraryItem',
-              changes: [
-                {
-                  _id: meta.id,
-                  name: meta.name,
-                  type: meta.type,
-                  removed: true,
-                  _updatedAt: new Date().toISOString(),
-                },
-              ],
-            }),
-          });
+          // Flag the stored item instead of replacing it: its progress and watched episodes stay.
+          const raw = await this.fetchRawLibraryItem(meta.id);
+          if (raw) await this.putRawLibraryItem({ ...raw, removed: true, temp: false });
         } catch (err) {
           console.warn('Erro ao remover do Stremio Cloud Datastore:', err);
         }
@@ -159,7 +153,10 @@ export class AccountService {
         year: meta.year,
         imdbRating: meta.imdbRating,
         genres: meta.genres || [],
-        state: {
+        logo: meta.logo,
+        description: meta.description,
+        // Something already being watched keeps its progress when it is added.
+        state: this.userLibrary.find((item) => item._id === meta.id)?.state ?? {
           timeOffset: 0,
           duration: 0,
           timesWatched: 0,
@@ -177,15 +174,8 @@ export class AccountService {
 
       if (user?.authKey) {
         try {
-          await fetch(`${STREMIO_API_URL}/datastorePut`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              authKey: user.authKey,
-              collection: 'libraryItem',
-              changes: [newItem],
-            }),
-          });
+          const raw = (await this.fetchRawLibraryItem(meta.id)) ?? this.newRawLibraryItem(meta);
+          await this.putRawLibraryItem({ ...raw, removed: false, temp: false });
         } catch (err) {
           console.warn('Erro ao salvar no Stremio Cloud Datastore:', err);
         }
@@ -193,6 +183,120 @@ export class AccountService {
 
       return true;
     }
+  }
+
+  private static async datastore(route: 'datastoreGet' | 'datastorePut', body: Record<string, unknown>): Promise<any> {
+    const res = await fetch(`${STREMIO_API_URL}/${route}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data?.error) throw new Error(data.error.message || `${route} falhou`);
+    return data?.result;
+  }
+
+  /** The library item exactly as Stremio stores it, or null (not saved yet / signed out). */
+  public static async fetchRawLibraryItem(id: string): Promise<RawLibraryItem | null> {
+    const authKey = this.getUser()?.authKey;
+    if (!authKey) return null;
+    const result = await this.datastore('datastoreGet', { authKey, collection: 'libraryItem', ids: [id], all: false });
+    return Array.isArray(result) ? (result.find((item: RawLibraryItem) => item?._id === id) ?? null) : null;
+  }
+
+  /** Stores a full item; `_mtime` is bumped so every Stremio client takes this version. */
+  public static async putRawLibraryItem(item: RawLibraryItem): Promise<void> {
+    const authKey = this.getUser()?.authKey;
+    if (!authKey) return;
+    item._mtime = new Date().toISOString();
+    await this.datastore('datastorePut', { authKey, collection: 'libraryItem', changes: [item] });
+  }
+
+  /** A complete new item in Stremio's format (not in the library: shows only in Continue Watching). */
+  public static newRawLibraryItem(meta: { id: string; type: string; name: string; poster?: string }): RawLibraryItem {
+    const now = new Date().toISOString();
+    return {
+      _id: meta.id,
+      name: meta.name,
+      type: meta.type,
+      poster: meta.poster ?? null,
+      posterShape: 'poster',
+      removed: true,
+      temp: true,
+      _ctime: now,
+      _mtime: now,
+      state: {
+        lastWatched: null,
+        timeWatched: 0,
+        timeOffset: 0,
+        overallTimeWatched: 0,
+        timesWatched: 0,
+        flaggedWatched: 0,
+        duration: 0,
+        video_id: null,
+        watched: null,
+        noNotif: false,
+      },
+      behaviorHints: { defaultVideoId: null, featuredVideoId: null, hasScheduledVideos: false },
+    };
+  }
+
+  private static mapRawItem(item: RawLibraryItem): StremioLibraryItem {
+    return {
+      _id: item._id,
+      name: item.name || 'Título sem nome',
+      type: (item.type as StremioLibraryItem['type']) || 'movie',
+      poster:
+        item.poster ||
+        (item._id.startsWith('tt') ? `https://images.metahub.space/poster/medium/${item._id}/img` : undefined),
+      background:
+        item.background ||
+        (item._id.startsWith('tt') ? `https://images.metahub.space/background/medium/${item._id}/img` : undefined),
+      year: item.year,
+      imdbRating: item.imdbRating,
+      genres: Array.isArray(item.genres) ? item.genres : [],
+      logo: item.logo,
+      description: item.description,
+      state: item.state || {},
+      removed: !!item.removed,
+      temp: !!item.temp,
+      _updatedAt: item._mtime || item._updatedAt,
+    };
+  }
+
+  /** Shows a stored item locally right away (Continue Watching, resume point). */
+  public static applyRawLibraryItem(item: RawLibraryItem) {
+    const existing = this.userLibrary.find((entry) => entry._id === item._id);
+    const mapped = this.mapRawItem(item);
+    const others = this.userLibrary.filter((entry) => entry._id !== item._id);
+    // Keep artwork and metadata already enriched for this title.
+    const next = existing
+      ? { ...existing, state: mapped.state, removed: mapped.removed, temp: mapped.temp, _updatedAt: mapped._updatedAt }
+      : mapped;
+    this.userLibrary = !item.removed || item.temp ? [next, ...others] : others;
+    localStorage.setItem(LIBRARY_CACHE_KEY, JSON.stringify(this.userLibrary));
+    this.libraryListeners.forEach((fn) => fn());
+  }
+
+  /** Fires when progress or library membership changes locally. */
+  public static subscribeLibrary(listener: LibraryChangeListener): () => void {
+    this.libraryListeners.add(listener);
+    return () => this.libraryListeners.delete(listener);
+  }
+
+  /** Library items plus titles only being watched (Stremio's Continue Watching rule). */
+  public static getWatchingItems(): StremioLibraryItem[] {
+    return this.userLibrary.filter((item) => isContinueWatching(item.state));
+  }
+
+  /** Seconds to resume `videoId` at, from the synced library (0 = start). */
+  public static getResumeSeconds(metaId: string, videoId: string): number {
+    return resumeSecondsFor(this.userLibrary.find((item) => item._id === metaId)?.state, metaId, videoId);
+  }
+
+  /** Last watched episode recorded in Stremio for a series. */
+  public static getLastEpisode(metaId: string): { season: number; episode: number } | null {
+    return lastEpisodeOf(this.userLibrary.find((item) => item._id === metaId)?.state);
   }
 
   /**
@@ -317,26 +421,11 @@ export class AccountService {
       const data = await res.json();
 
       if (data.result && Array.isArray(data.result)) {
+        // Library items, plus titles watched outside the library (`temp`), which Stremio
+        // lists in Continue Watching. `getLibrary` hides the latter.
         let parsedItems: StremioLibraryItem[] = data.result
-          .filter((item: any) => item && !item.removed && !this.removedLocalIds.has(item._id))
-          .map((item: any) => ({
-            _id: item._id,
-            name: item.name || 'Título sem nome',
-            type: item.type || 'movie',
-            poster:
-              item.poster ||
-              (item._id.startsWith('tt')
-                ? `https://images.metahub.space/poster/medium/${item._id}/img`
-                : undefined),
-            background: item.background || (item._id.startsWith('tt')
-                ? `https://images.metahub.space/background/medium/${item._id}/img`
-                : undefined),
-            year: item.year,
-            imdbRating: item.imdbRating,
-            genres: Array.isArray(item.genres) ? item.genres : [],
-            state: item.state || {},
-            _updatedAt: item._updatedAt,
-          }));
+          .filter((item: RawLibraryItem) => item?._id && (!item.removed || item.temp) && !this.removedLocalIds.has(item._id))
+          .map((item: RawLibraryItem) => this.mapRawItem(item));
 
         // Merge any locally added items not yet present in datastoreGet
         for (const [id, localItem] of this.addedLocalItems.entries()) {
@@ -347,13 +436,8 @@ export class AccountService {
 
         // Sort items: items with progress first, then by lastWatched / updatedAt
         parsedItems.sort((a, b) => {
-          const aOffset = a.state?.timeOffset || 0;
-          const aDur = a.state?.duration || 1;
-          const aIsWatching = aOffset > 0 && aOffset < aDur * 0.95;
-
-          const bOffset = b.state?.timeOffset || 0;
-          const bDur = b.state?.duration || 1;
-          const bIsWatching = bOffset > 0 && bOffset < bDur * 0.95;
+          const aIsWatching = isContinueWatching(a.state);
+          const bIsWatching = isContinueWatching(b.state);
 
           if (aIsWatching && !bIsWatching) return -1;
           if (!aIsWatching && bIsWatching) return 1;
@@ -382,13 +466,49 @@ export class AccountService {
    * Get Library (cached or synced)
    */
   public static async getLibrary(forceRefresh: boolean = false): Promise<StremioLibraryItem[]> {
-    if (forceRefresh || (this.isLoggedIn() && this.userLibrary.length === 0)) {
-      return this.syncLibrary();
+    let items: StremioLibraryItem[];
+    const stale = Date.now() - this.lastSyncTime > LIBRARY_MAX_AGE_MS;
+    if (forceRefresh || (this.isLoggedIn() && (this.userLibrary.length === 0 || stale))) {
+      items = await this.syncLibrary();
+    } else {
+      items = this.userLibrary.length > 0 ? this.userLibrary : this.getLocalOrFallbackLibrary();
     }
-    if (this.userLibrary.length > 0) {
-      return this.userLibrary;
+    // Titles only being watched are not in the library (they appear in Continue Watching).
+    return items.filter((item) => !item.removed);
+  }
+
+  public static async enrichLibrary(items: StremioLibraryItem[]): Promise<StremioLibraryItem[]> {
+    const enriched = [...items];
+    let next = 0;
+    let changed = false;
+    // Limit requests for third-party metadata while preserving every entry,
+    // ID and progress record, including when a provider is offline.
+    await Promise.all(Array.from({ length: Math.min(4, items.length) }, async () => {
+      while (next < items.length) {
+        const index = next++;
+        const item = items[index];
+        if (item.poster && (/^tt\d+$/.test(item._id) || (item.logo && item.description))) continue;
+        const meta = await MetadataService.getMeta(item.type, item._id, this.getUserAddons());
+        if (!meta) continue;
+        enriched[index] = {
+          ...item,
+          name: !item.name || item.name === 'Título sem nome' ? meta.name : item.name,
+          poster: meta.poster || item.poster,
+          background: meta.background || meta.banner || item.background,
+          logo: meta.logo || item.logo,
+          description: meta.description || item.description,
+          year: meta.year || meta.releaseInfo || item.year,
+          genres: meta.genres || item.genres,
+          imdbRating: meta.imdbRating || item.imdbRating,
+        };
+        changed = true;
+      }
+    }));
+    if (changed && this.userLibrary === items) {
+      this.userLibrary = enriched;
+      localStorage.setItem(LIBRARY_CACHE_KEY, JSON.stringify(enriched));
     }
-    return this.getLocalOrFallbackLibrary();
+    return enriched;
   }
 
   /**
@@ -419,7 +539,53 @@ export class AccountService {
     return this.userAddons;
   }
 
+  /**
+   * Remove an addon from the Stremio account (same as "Uninstall" in the official app).
+   * Reads the collection fresh first so a change made elsewhere is not overwritten.
+   */
+  public static async uninstallAddon(transportUrl: string): Promise<{ success: boolean; error?: string }> {
+    const authKey = this.getUser()?.authKey;
+    if (!authKey) return { success: false, error: 'Conecte sua conta Stremio para remover addons da conta.' };
+
+    const post = async (route: string, body: Record<string, unknown>) => {
+      const res = await fetch(`${STREMIO_API_URL}/${route}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      return res.json();
+    };
+
+    try {
+      const current = await post('addonCollectionGet', { type: 'AddonCollectionGet', authKey });
+      const addons: Array<StremioAddon> | undefined = current?.result?.addons;
+      if (!Array.isArray(addons)) return { success: false, error: 'Não consegui ler os addons da conta.' };
+
+      const target = addons.find((a) => a.transportUrl === transportUrl);
+      if (!target) return { success: false, error: 'Esse addon não está mais na sua conta.' };
+      if (target.flags?.protected) return { success: false, error: 'Este addon é protegido e não pode ser removido.' };
+
+      const remaining = addons.filter((a) => a.transportUrl !== transportUrl);
+      const saved = await post('addonCollectionSet', { type: 'AddonCollectionSet', authKey, addons: remaining });
+      if (saved?.error) {
+        return { success: false, error: saved.error.message || 'O Stremio recusou a remoção.' };
+      }
+
+      this.userAddons = remaining;
+      localStorage.setItem(ADDONS_CACHE_KEY, JSON.stringify(remaining));
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Erro de conexão com os servidores do Stremio' };
+    }
+  }
+
+  /** Account addons plus the local extensions running in the app. */
   public static getUserAddons(): StremioAddon[] {
+    return [...this.getAccountAddons(), ...LocalAddonService.getAddons()];
+  }
+
+  /** Addons synced from the Stremio account only. */
+  public static getAccountAddons(): StremioAddon[] {
     if (this.userAddons.length > 0) {
       return this.userAddons;
     }
